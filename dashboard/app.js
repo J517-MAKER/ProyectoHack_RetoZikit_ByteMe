@@ -130,7 +130,7 @@
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ escenario: key, velocidad: sp.api, sensibilidad: se.api }),
         });
-        S = { mode: "backend", key, thr: se.v, alerted: false, done: false };
+        S = { mode: "backend", key, thr: se.v, alerted: false, done: false, avisoShown: false };
         timer = setInterval(pollBackend, 350);
         return;
       } catch (e) { useBackend = false; note("Se perdió el servidor; sigo en modo autónomo."); }
@@ -174,6 +174,18 @@
       S.alerted = true;
       const scn = SCN[S.key];
       fireAlert(scn.alertT, scn.alertB, d.accion_sugerida);
+    }
+    // Confirma en pantalla si el aviso real salio al celular
+    if (d.alertado && d.aviso_configurado && !S.avisoShown) {
+      S.avisoShown = true;
+      const nota = document.createElement("div");
+      nota.className = "bm";
+      nota.style.marginTop = "6px";
+      nota.textContent = d.aviso_enviado
+        ? "✓ Enviado a tu celular por Telegram"
+        : "No se pudo enviar al celular (" + (d.aviso_motivo || "revisa la configuración") + ")";
+      const bubble = document.querySelector("#notifBody .bubble");
+      if (bubble) bubble.appendChild(nota);
     }
     if (d.resultado) showResult(d.resultado);
   }

@@ -28,6 +28,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+import notificaciones
+
 
 # =============================================================
 #  ESCENARIOS DE FALLA
@@ -101,6 +103,9 @@ class RiskEngine:
         self.fail_t: int | None = None        # segundo en que fallaria
         self.alerted: bool = False
         self.resolved: bool = False
+        self.aviso_enviado: bool = False      # si el aviso real salio
+        self.aviso_motivo: str = ""           # motivo si no salio
+        self._pending_alert: bool = False
         self._task: asyncio.Task | None = None
         self._stop = asyncio.Event()
 
@@ -119,6 +124,9 @@ class RiskEngine:
         self.fail_t = None
         self.alerted = False
         self.resolved = False
+        self.aviso_enviado = False
+        self.aviso_motivo = ""
+        self._pending_alert = False
 
     async def start(self, scenario: str, speed: str, sensitivity: str):
         if self.is_running:
@@ -189,6 +197,7 @@ class RiskEngine:
         if not self.alerted and self.risk >= self.threshold:
             self.alerted = True
             self.detect_t = self.t
+            self._pending_alert = True   # el loop enviara el aviso real
 
         # Punto de falla
         if self.fail_t is None and self.value >= scn["fail"]:
@@ -202,6 +211,10 @@ class RiskEngine:
         try:
             while self.is_running and not self._stop.is_set():
                 self._step()
+                # Si se cruzo el umbral en este tick, manda el aviso real
+                if getattr(self, "_pending_alert", False):
+                    self._pending_alert = False
+                    await self._enviar_aviso()
                 try:
                     await asyncio.wait_for(self._stop.wait(), timeout=0.35)
                     break
@@ -209,6 +222,22 @@ class RiskEngine:
                     pass
         finally:
             self.is_running = False
+
+    async def _enviar_aviso(self):
+        """Dispara el aviso al responsable (Telegram) al detectar el riesgo."""
+        scn = self.scenario
+        try:
+            res = await notificaciones.enviar_telegram(scn["nombre"], scn["descripcion"])
+            self.aviso_enviado = bool(res.get("enviado"))
+            self.aviso_motivo = res.get("motivo", "")
+            if self.aviso_enviado:
+                print(f"[aviso] Enviado al responsable: {scn['nombre']}")
+            else:
+                print(f"[aviso] No se envio ({self.aviso_motivo}). "
+                      f"La demo visual sigue funcionando.")
+        except Exception as e:
+            self.aviso_enviado = False
+            self.aviso_motivo = str(e)
 
     def _band(self) -> str:
         if self.risk < 40:
@@ -245,6 +274,9 @@ class RiskEngine:
             "umbral": self.threshold,
             "alertado": self.alerted,
             "resuelto": self.resolved,
+            "aviso_enviado": self.aviso_enviado,
+            "aviso_motivo": self.aviso_motivo,
+            "aviso_configurado": notificaciones.esta_configurado(),
             "history": list(self.history),
             "resultado": self._window(),
         }
@@ -304,6 +336,27 @@ async def listar_escenarios():
         k: {"nombre": v["nombre"], "descripcion": v["descripcion"]}
         for k, v in SCENARIOS.items()
     }
+
+
+@app.get("/api/aviso/estado")
+async def aviso_estado():
+    """Dice si el envio de avisos reales (Telegram) esta configurado."""
+    return {"configurado": notificaciones.esta_configurado()}
+
+
+@app.post("/api/aviso/probar")
+async def probar_aviso():
+    """Manda un aviso de prueba al celular del responsable."""
+    if not notificaciones.esta_configurado():
+        raise HTTPException(
+            status_code=400,
+            detail="Falta configurar TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID en backend/.env",
+        )
+    res = await notificaciones.enviar_telegram(
+        "Prueba de SecureGuard",
+        "Si recibes este mensaje, los avisos al responsable estan funcionando.",
+    )
+    return res
 
 
 @app.post("/api/simular/iniciar")

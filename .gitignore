@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Credenciales de avisos (NUNCA subir)
+.env
+backend/.env
