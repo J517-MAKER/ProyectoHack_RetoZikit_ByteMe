@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="DDoS Simulation Lab — Entorno educativo para simular, monitorear y prevenir ataques DDoS contra ESP32">
+    <title>🛡️ DDoS Simulation Lab</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- ============================================ -->
+    <!--  HEADER                                      -->
+    <!-- ============================================ -->
+    <header class="header" id="header">
+        <div class="logo">
+            <span class="logo-icon">🛡️</span>
+            <span class="logo-text">DDoS Simulation Lab</span>
+            <span class="logo-badge">ESP32</span>
+        </div>
+        <div class="header-right">
+            <div class="attack-indicator" id="attack-indicator">
+                <span class="attack-dot"></span>
+                ATAQUE EN CURSO
+            </div>
+            <div class="connection-status" id="connection-status">
+                <span class="status-dot" id="status-dot"></span>
+                <span class="status-text">
+                    ESP32: <span id="esp-ip">Desconectado</span>
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ============================================ -->
+    <!--  DASHBOARD PRINCIPAL                         -->
+    <!-- ============================================ -->
+    <main class="dashboard">
+
+        <!-- ======================================== -->
+        <!--  PANEL IZQUIERDO: CONTROL DE ATAQUE      -->
+        <!-- ======================================== -->
+        <section class="panel attack-panel" id="attack-panel">
+            <h2 class="panel-title">
+                <span class="panel-icon">⚡</span>
+                Panel de Ataque
+            </h2>
+
+            <!-- Target IP -->
+            <div class="control-group">
+                <label for="target-ip">IP del Objetivo (ESP32)</label>
+                <input
+                    type="text"
+                    id="target-ip"
+                    placeholder="192.168.1.100"
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+            </div>
+
+            <!-- Attack Type -->
+            <div class="control-group">
+                <label for="attack-type">Tipo de Ataque</label>
+                <select id="attack-type">
+                    <option value="http_flood">HTTP Flood (GET masivo)</option>
+                    <option value="http_post">HTTP POST Flood</option>
+                </select>
+            </div>
+
+            <!-- Intensity Slider -->
+            <div class="control-group">
+                <label for="intensity">
+                    Intensidad:
+                    <span class="range-value" id="intensity-val">100</span>
+                    <span class="range-unit">req/s</span>
+                </label>
+                <input
+                    type="range"
+                    id="intensity"
+                    min="1"
+                    max="500"
+                    value="100"
+                    step="1"
+                >
+                <div class="range-hints">
+                    <span>1</span>
+                    <span>250</span>
+                    <span>500</span>
+                </div>
+            </div>
+
+            <!-- Concurrent Connections Slider -->
+            <div class="control-group">
+                <label for="concurrent">
+                    Conexiones Concurrentes:
+                    <span class="range-value" id="concurrent-val">50</span>
+                </label>
+                <input
+                    type="range"
+                    id="concurrent"
+                    min="1"
+                    max="200"
+                    value="50"
+                    step="1"
+                >
+                <div class="range-hints">
+                    <span>1</span>
+                    <span>100</span>
+                    <span>200</span>
+                </div>
+            </div>
+
+            <!-- Attack Button -->
+            <button class="btn btn-attack" id="attack-btn">
+                <span class="btn-icon">▶</span>
+                <span class="btn-label">LANZAR ATAQUE</span>
+            </button>
+
+            <!-- Attack Statistics -->
+            <div class="attack-stats" id="attack-stats">
+                <h3 class="stats-title">📊 Estadísticas del Ataque</h3>
+
+                <div class="stat-row">
+                    <span class="stat-label">Enviadas</span>
+                    <span class="stat-value" id="stat-sent">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Exitosas</span>
+                    <span class="stat-value success" id="stat-success">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Fallidas / Timeout</span>
+                    <span class="stat-value danger" id="stat-failed">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Tasa de Éxito</span>
+                    <span class="stat-value" id="stat-rate">—</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Latencia Promedio</span>
+                    <span class="stat-value" id="stat-latency">—</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Duración</span>
+                    <span class="stat-value" id="stat-duration">0s</span>
+                </div>
+            </div>
+
+            <!-- Activity Log -->
+            <div class="log-section">
+                <h3 class="stats-title">🖥️ Log de Actividad</h3>
+                <div class="log-terminal" id="log-terminal">
+                    <div class="log-entry info">
+                        <span class="log-ts">[--:--:--]</span> Sistema inicializado. Ingresa la IP del ESP32.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================================== -->
+        <!--  PANEL DERECHO: MONITOREO DEL SERVIDOR   -->
+        <!-- ======================================== -->
+        <section class="panel monitor-panel" id="monitor-panel">
+            <h2 class="panel-title">
+                <span class="panel-icon">📊</span>
+                Monitor del Servidor (Víctima)
+            </h2>
+
+            <!-- KPI Cards -->
+            <div class="kpi-grid">
+                <div class="kpi-card kpi-cyan">
+                    <div class="kpi-icon">⏱️</div>
+                    <div class="kpi-value" id="kpi-latency">—</div>
+                    <div class="kpi-label">Latencia (ms)</div>
+                    <div class="kpi-bar">
+                        <div class="kpi-bar-fill" id="kpi-latency-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-amber">
+                    <div class="kpi-icon">📈</div>
+                    <div class="kpi-value" id="kpi-rps">—</div>
+                    <div class="kpi-label">Peticiones/s</div>
+                    <div class="kpi-bar">
+                        <div class="kpi-bar-fill" id="kpi-rps-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-purple">
+                    <div class="kpi-icon">🧠</div>
+                    <div class="kpi-value" id="kpi-memory">—</div>
+                    <div class="kpi-label">Uso de Memoria</div>
+                    <div class="kpi-bar">
+                        <div class="kpi-bar-fill" id="kpi-memory-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-red">
+                    <div class="kpi-icon">🚫</div>
+                    <div class="kpi-value" id="kpi-blocked">—</div>
+                    <div class="kpi-label">Bloqueadas</div>
+                    <div class="kpi-bar">
+                        <div class="kpi-bar-fill" id="kpi-blocked-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <span class="chart-icon">⏱️</span>
+                        <span class="chart-title">Latencia en Tiempo Real</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart-latency"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <span class="chart-icon">📈</span>
+                        <span class="chart-title">Peticiones por Segundo</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart-rps"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <span class="chart-icon">🧠</span>
+                        <span class="chart-title">Uso de Memoria (Heap)</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart-memory"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <span class="chart-icon">🚫</span>
+                        <span class="chart-title">Permitidas vs Bloqueadas</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart-blocked"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Defense Controls -->
+            <div class="defense-section" id="defense-section">
+                <div class="defense-header">
+                    <span class="defense-icon">🔒</span>
+                    <span class="defense-title">Controles de Defensa del ESP32</span>
+                </div>
+
+                <div class="defense-body">
+                    <div class="defense-toggle-area">
+                        <button class="btn btn-defense" id="defense-btn">
+                            <span class="btn-icon">🛡️</span>
+                            <span class="btn-label">Activar Defensas</span>
+                        </button>
+                    </div>
+
+                    <div class="defense-config">
+                        <label for="rate-limit" class="defense-config-label">
+                            Rate Limit:
+                            <span class="range-value" id="rate-limit-val">10</span>
+                            <span class="range-unit">req/s por IP</span>
+                        </label>
+                        <input
+                            type="range"
+                            id="rate-limit"
+                            min="1"
+                            max="100"
+                            value="10"
+                            step="1"
+                        >
+                    </div>
+                </div>
+
+                <div class="defense-stats-bar">
+                    <div class="defense-stat">
+                        <span class="defense-stat-icon">🔴</span>
+                        IPs Bloqueadas: <strong id="defense-bl">0</strong>
+                    </div>
+                    <div class="defense-stat">
+                        <span class="defense-stat-icon">🚫</span>
+                        Total Rechazadas: <strong id="defense-blocked-total">0</strong>
+                    </div>
+                    <div class="defense-stat">
+                        <span class="defense-stat-icon">📶</span>
+                        WiFi RSSI: <strong id="defense-rssi">—</strong> dBm
+                    </div>
+                    <div class="defense-stat">
+                        <span class="defense-stat-icon">⏱️</span>
+                        Uptime: <strong id="defense-uptime">—</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ============================================ -->
+    <!--  FOOTER                                      -->
+    <!-- ============================================ -->
+    <footer class="footer">
+        <p>⚠️ Este sistema es <strong>exclusivamente para fines educativos</strong> en redes controladas propias.</p>
+    </footer>
+
+    <!-- App Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
