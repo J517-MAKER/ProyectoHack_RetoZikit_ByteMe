@@ -147,6 +147,33 @@
       </div>
     </details>
 
+    <!-- DATOS REALES (dataset Zikit) -->
+    <details class="control" id="datasetPanel">
+      <summary>
+        <span>📊 Datos reales · reproducir una semana del dataset</span>
+        <span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span>
+      </summary>
+      <div class="cbody">
+        <div class="csub">Reproduce la telemetría real de una PyME (cliente <strong>gramo</strong>, distribuidora de alimentos) del kit de datos del reto. El detector corre en vivo sobre los datos y avisa de las fallas reales <strong>antes</strong> de que lleguen al pico, sin falsas alarmas por los picos normales del negocio.</div>
+
+        <div class="field">
+          <label for="corridaSel">¿Qué semana (corrida) reproducir?</label>
+          <select id="corridaSel"><option>cargando…</option></select>
+        </div>
+
+        <div class="runrow">
+          <button class="run" id="replayBtn">Reproducir datos reales</button>
+          <button class="ghost" id="replayStop">Detener</button>
+        </div>
+        <div class="backend-note" id="replayNote">Requiere el servidor corriendo (python server.py).</div>
+
+        <div id="replayResult" hidden>
+          <div class="rb-title" style="margin-top:16px">Fallas reales detectadas</div>
+          <div id="replayDets"></div>
+        </div>
+      </div>
+    </details>
+
     <div class="footnote">Comparación: sin vigilancia, la falla se descubre cuando el cliente llama molesto. Con SecureGuard, el aviso llega al cruzar el punto de riesgo. La diferencia es el tiempo que ganas para resolver sin que nadie lo note.</div>
   </div>
 
