@@ -14,7 +14,7 @@ En una PyME, las fallas de TI se descubren cuando el cliente llama molesto. Las 
 
 ## 🧩 Arquitectura
 
-El proyecto tiene tres componentes:
+El proyecto tiene cuatro componentes:
 
 1. **Equipo monitoreado (ESP32)** — `esp32/salud_firmware/`
    Representa un equipo de la PyME (una caja, un mini-servidor). Reporta su salud en tiempo real (memoria, uptime, latencia, WiFi) en el endpoint `/health`. No se defiende de ataques: solo informa cómo está.
@@ -24,6 +24,11 @@ El proyecto tiene tres componentes:
 
 3. **Dashboard web** — `dashboard/`
    Un tablero sobrio, pensado para que **alguien que no es de Sistemas** lo entienda de un vistazo: un semáforo de salud, "qué está pasando", "qué conviene hacer", y el aviso tal como le llegaría al responsable.
+
+4. **Tablero NodeMCU para gramo** — `dashboard_nodemcu/`
+   Servidor dedicado al cliente **gramo** del kit Zikit: reproduce sus corridas reales minuto a minuto,
+   avisa antes del pico de cada falla (33/33 fallas reales, 0 falsas alarmas) y usa una NodeMCU (ESP8266)
+   como semáforo físico. Ver [`dashboard_nodemcu/README.md`](dashboard_nodemcu/README.md).
 
 ```
 Señal de un equipo  ──►  Motor de riesgo  ──►  Alerta + acción

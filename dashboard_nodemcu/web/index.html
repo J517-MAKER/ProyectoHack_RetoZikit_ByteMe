@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SecureGuard · gramo — Vigilancia preventiva de la distribuidora gramo con NodeMCU.">
+  <title>SecureGuard · gramo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="app">
+      <div class="brand">
+        <div class="mark">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <div>
+          <div class="name">SecureGuard · gramo</div>
+          <div class="tag">Distribuidora de alimentos · tablero NodeMCU</div>
+        </div>
+      </div>
+      <div class="hbtns">
+        <span class="pill"><span class="pdot" id="pdot"></span><span id="fuente">Sin datos</span></span>
+        <button class="ibtn" id="themeBtn" aria-label="Cambiar tema">◐</button>
+      </div>
+    </header>
+
+    <!-- ESTADO GENERAL -->
+    <section class="hero">
+      <div class="eyebrow" id="reloj">Esperando telemetría</div>
+      <div class="status-ring">
+        <svg viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="10"/>
+          <circle id="ring" cx="60" cy="60" r="52" fill="none" stroke="var(--ok)" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0" style="transition:stroke-dashoffset .4s, stroke .4s"/>
+        </svg>
+        <div class="ring-label">
+          <div class="score" id="score">100</div>
+          <div class="of">salud de 100</div>
+        </div>
+      </div>
+      <div class="headline" id="headline">Todo funcionando con normalidad</div>
+      <div class="subline" id="subline">Los pedidos, el inventario y el portal responden bien.</div>
+      <div class="badge" id="badge"><span class="bd"></span><span id="badgeTxt">Saludable</span></div>
+    </section>
+
+    <!-- QUE PASA / QUE HACER -->
+    <div class="cols">
+      <div class="card">
+        <h3>Qué está pasando</h3>
+        <div id="whatText" class="muted">Sin novedades en los sistemas de gramo.</div>
+        <div class="note" id="ventana" hidden></div>
+      </div>
+      <div class="card">
+        <h3>Qué conviene hacer</h3>
+        <div id="doText" class="muted">Nada por ahora. Seguimos vigilando.</div>
+      </div>
+    </div>
+
+    <!-- SEÑALES -->
+    <section class="card">
+      <h3>Señales de app-01 <span class="muted small">(últimas 4 horas)</span></h3>
+      <div class="spark" data-campo="riesgo" data-titulo="Riesgo" data-unidad="" data-max="100" data-umbral="65"></div>
+      <div class="spark" data-campo="ram" data-titulo="Memoria (RAM)" data-unidad="%" data-max="100" data-umbral="82"></div>
+      <div class="spark" data-campo="latencia" data-titulo="Tiempo de respuesta" data-unidad=" ms" data-max="300" data-umbral="180"></div>
+      <div class="spark" data-campo="errores" data-titulo="Errores por minuto" data-unidad="" data-max="15" data-umbral="4"></div>
+      <div class="small muted">La línea punteada marca el nivel que, si se <b>sostiene</b> varios minutos, delata una falla. Un pico suelto es ruido normal.</div>
+    </section>
+
+    <!-- AVISOS -->
+    <section class="card">
+      <h3>Avisos enviados al responsable</h3>
+      <div id="avisos" class="muted">Todavía ningún aviso.</div>
+      <div class="small muted" id="telegram"></div>
+    </section>
+
+    <!-- REGISTROS -->
+    <section class="card">
+      <h3>Lo que dicen los registros</h3>
+      <div id="registros" class="muted">Sin advertencias recientes.</div>
+    </section>
+
+    <!-- CONTEXTO -->
+    <section class="card">
+      <h3>Lo que sabemos de gramo</h3>
+      <div id="contexto" class="muted">Cargando…</div>
+    </section>
+
+    <!-- CONTROL -->
+    <details class="card demo" open>
+      <summary>Modo demostración</summary>
+      <div class="ctl">
+        <label>Corrida del kit <select id="corrida"></select></label>
+        <label>Velocidad <select id="velocidad">
+          <option value="lenta">10 min/s</option>
+          <option value="media" selected>1 h/s</option>
+          <option value="rapida">4 h/s</option>
+        </select></label>
+        <button id="btnIniciar" class="primary">Reproducir</button>
+        <button id="btnDetener">Detener</button>
+      </div>
+      <div class="bar"><div id="progreso"></div></div>
+      <div class="ctl">
+        <span id="nodemcu" class="small muted">NodeMCU: sin conexión.</span>
+        <button id="btnNodeReset">Reiniciar NodeMCU</button>
+        <button id="btnProbar">Probar aviso Telegram</button>
+      </div>
+    </details>
+  </div>
+  <div id="tip" class="tip" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>

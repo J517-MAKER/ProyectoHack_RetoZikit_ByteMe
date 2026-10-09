@@ -1,0 +1,3 @@
+# SecureGuard · gramo - Servidor del tablero NodeMCU
+# Mismas dependencias que backend/ (reutiliza su detector y sus avisos).
+-r ../backend/requirements.txt
