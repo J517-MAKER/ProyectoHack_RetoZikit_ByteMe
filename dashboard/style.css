@@ -75,6 +75,7 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); margi
 .ring-label { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
 .ring-label .score { font-size: 2.3rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
 .ring-label .of { font-size: .68rem; color: var(--ink-faint); margin-top: 3px; }
+.score-why { font-size: .8rem; color: var(--ink-soft); margin: 0 auto 16px; max-width: 42ch; line-height: 1.45; background: var(--card-2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 15px; display: inline-block; transition: color .4s; }
 .headline { font-size: 1.5rem; font-weight: 680; letter-spacing: -.02em; text-wrap: balance; }
 .subline { font-size: .95rem; color: var(--ink-soft); margin-top: 6px; max-width: 46ch; margin-inline: auto; }
 .badge { display: inline-flex; align-items: center; gap: 7px; font-size: .82rem; font-weight: 600; padding: 7px 16px; border-radius: 999px; margin-top: 16px; }

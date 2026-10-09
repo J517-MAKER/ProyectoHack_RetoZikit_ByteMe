@@ -21,25 +21,25 @@
 
   // ---- Escenarios (espejo del backend, para el modo sin servidor) ----
   const SCN = {
-    memory: { driver: "mem", base: 12, fail: 100,
+    memory: { driver: "mem", base: 12, fail: 100, senal: "la memoria de la caja",
       what: "La caja registradora está consumiendo cada vez más memoria. Si llega al límite, se reinicia y se pierde la venta en curso.",
       proj: "A este ritmo llegaría al límite en unos 45 segundos.",
       alertT: "Revisa la Caja 1",
       alertB: "La caja principal se está quedando sin memoria y podría reiniciarse pronto. Conviene actuar ahora, antes de que se caiga en plena venta.",
       act: "Liberar memoria y reiniciar el programa de la caja (sin perder la venta actual)." },
-    disk: { driver: "mem", base: 20, fail: 100,
+    disk: { driver: "mem", base: 20, fail: 100, senal: "el espacio del servidor",
       what: "El servidor donde se guardan las ventas y facturas se está llenando. Sin espacio, deja de registrar operaciones.",
       proj: "A este ritmo se llenaría en unos 40 segundos.",
       alertT: "El servidor casi sin espacio",
       alertB: "El disco del servidor está por llenarse. Si se llena, dejará de guardar ventas y facturas. Conviene liberar espacio ahora.",
       act: "Liberar espacio y archivar registros antiguos de forma automática." },
-    latency: { driver: "lat", base: 40, fail: 600,
+    latency: { driver: "lat", base: 40, fail: 600, senal: "el tiempo de respuesta",
       what: "El sistema está respondiendo cada vez más lento. Los cobros empiezan a tardar y los clientes esperan.",
       proj: "En menos de 50 segundos sería demasiado lento para cobrar.",
       alertT: "El sistema va lento",
       alertB: "Los tiempos de respuesta están subiendo rápido. Antes de que sea inusable para cobrar, conviene revisarlo.",
       act: "Liberar conexiones atascadas y ampliar el recurso del servidor." },
-    errors: { driver: "err", base: 0, fail: 50,
+    errors: { driver: "err", base: 0, fail: 50, senal: "la cantidad de errores",
       what: "Están empezando a fallar operaciones sueltas. Un fallo puede arrastrar a otros hasta detener el servicio.",
       proj: "Podría caerse por completo en unos 45 segundos.",
       alertT: "Fallos en aumento",
@@ -96,6 +96,7 @@
   function reset() {
     clearInterval(timer); timer = null; S = null;
     paintHealth(92, "ok");
+    setWhy("Todas las señales están en rango normal.");
     $("headline").textContent = "Todo funcionando con normalidad";
     $("subline").textContent = "No hay señales de problemas. Si algo empieza a fallar, lo verás aquí antes de que afecte a tus clientes.";
     setBadge("ok", "Saludable");
@@ -156,6 +157,8 @@
   function applyState(d) {
     const band = d.estado;
     paintHealth(d.salud, band);
+    const scnW = SCN[S.key];
+    setWhy(whyText(band, d.salud, scnW ? scnW.senal : null));
     S.hist = d.history || [];
     drawSpark(S.hist, d.umbral);
     $("clock").textContent = d.t + " s";
@@ -191,6 +194,7 @@
 
     const band = risk < 40 ? "ok" : risk < S.thr ? "warn" : "crit";
     paintHealth(Math.round(100 - risk), band);
+    setWhy(whyText(band, Math.round(100 - risk), scn.senal));
     drawSpark(S.hist, S.thr);
     $("clock").textContent = S.t + " s";
 
@@ -236,6 +240,7 @@
     $("actBtn").after(d);
     $("headline").textContent = "Resuelto a tiempo";
     $("subline").textContent = "Se aplicó la acción antes del punto de falla. El cliente nunca llegó a notarlo.";
+    setWhy("La acción contuvo el riesgo; las señales vuelven a bajar.");
     $("pillTxt").textContent = "Vigilando"; $("pdot").style.background = "var(--ok)";
 
     if (S.mode === "backend") {
@@ -259,6 +264,15 @@
     if (r.detect_t != null) $("ocDetect").textContent = r.detect_t + " s";
     if (r.fail_t != null) $("ocFail").textContent = r.fail_t + " s";
     if (r.ventana_s != null) $("ocWin").textContent = r.ventana_s + " s";
+  }
+
+  // ---- Explicacion viva del indice ----
+  function setWhy(txt) { $("scoreWhy").textContent = txt; }
+  function whyText(band, score, senal) {
+    senal = senal || "las señales del equipo";
+    if (band === "ok") return "Todas las señales están en rango normal.";
+    if (band === "warn") return "El riesgo subió porque " + senal + " viene creciendo más rápido de lo normal.";
+    return senal.charAt(0).toUpperCase() + senal.slice(1) + " se acerca al punto de falla y sigue subiendo.";
   }
 
   // ---- Pintado ----
