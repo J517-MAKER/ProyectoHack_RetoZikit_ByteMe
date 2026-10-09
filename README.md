@@ -1,104 +1,122 @@
-# 🛡️ DDoS Simulation Lab — Reto Zikit ByteMe
+# 🛡️ SecureGuard — Monitoreo Predictivo de Fallas
 
-Un entorno de laboratorio educativo, diseñado para simular, monitorear y aprender a mitigar ataques DDoS dirigidos a dispositivos IoT (ESP32).
+**Reto Zikit · "Antes de que suene el teléfono" · Equipo ByteMe**
 
-## 🚀 Arquitectura del Proyecto
-
-El proyecto consta de tres componentes principales:
-1. **Target (ESP32)**: Servidor web asíncrono con telemetría integrada y un firewall/defensa en capa de aplicación.
-2. **Backend (FastAPI)**: Motor de ataque de alto rendimiento (`asyncio` + `aiohttp`) y proxy de métricas.
-3. **Dashboard Web**: Interfaz de control y monitoreo en tiempo real con diseño oscuro y métricas reactivas (`Chart.js`).
+En una PyME, las fallas de TI se descubren cuando el cliente llama molesto. Las señales ya estaban ahí, pero nadie las vio a tiempo. **SecureGuard** reduce el tiempo entre la primera señal de falla y la acción efectiva: vigila la salud de los equipos, detecta cuándo algo empieza a ir mal y avisa al responsable **antes** de que el problema llegue al cliente.
 
 ---
 
-## 🛠️ Guía de Instalación y Uso
+## 🎯 La idea en una frase
 
-### 1. Preparar el ESP32 (La Víctima)
-1. Abre el archivo `esp32/ddos_lab_firmware/ddos_lab_firmware.ino` en Arduino IDE o PlatformIO.
-2. Edita la configuración WiFi con tus credenciales:
-   ```cpp
-   const char* WIFI_SSID     = "TU_RED_WIFI";
-   const char* WIFI_PASSWORD = "TU_CONTRASEÑA";
-   ```
-3. Instala las bibliotecas requeridas desde el Gestor de Bibliotecas:
-   - `ESPAsyncWebServer` (de me-no-dev)
-   - `AsyncTCP` (de me-no-dev)
-   - `ArduinoJson` (versión 7 o superior)
-4. Compila, sube al ESP32 y abre el Monitor Serie a `115200` baudios para obtener la **IP asignada**.
+> El sistema calcula un **índice de riesgo (0–100)** a partir de las señales de cada equipo. Cuando el riesgo cruza un umbral, emite la alerta y propone una acción — **antes** del punto de falla. La diferencia entre "cuándo avisamos" y "cuándo habría fallado" es el tiempo que el negocio gana para resolver sin que el cliente lo note.
 
-### 2. Levantar el Motor de Ataque y Dashboard (El Atacante)
-1. Asegúrate de tener Python 3.10+ instalado.
-2. Abre una terminal en la raíz del proyecto y navega al directorio del backend:
+---
+
+## 🧩 Arquitectura
+
+El proyecto tiene tres componentes:
+
+1. **Equipo monitoreado (ESP32)** — `esp32/salud_firmware/`
+   Representa un equipo de la PyME (una caja, un mini-servidor). Reporta su salud en tiempo real (memoria, uptime, latencia, WiFi) en el endpoint `/health`. No se defiende de ataques: solo informa cómo está.
+
+2. **Backend (FastAPI)** — `backend/`
+   El cerebro. Un **motor de riesgo** (`RiskEngine`) que calcula el índice 0–100 combinando el **nivel** (qué tan cerca del fallo) y la **tendencia** (qué tan rápido sube). Puede simular escenarios de falla para la demo, o leer la salud real del ESP32 (modo híbrido).
+
+3. **Dashboard web** — `dashboard/`
+   Un tablero sobrio, pensado para que **alguien que no es de Sistemas** lo entienda de un vistazo: un semáforo de salud, "qué está pasando", "qué conviene hacer", y el aviso tal como le llegaría al responsable.
+
+```
+Señal de un equipo  ──►  Motor de riesgo  ──►  Alerta + acción
+ (ESP32 o simulada)      (índice 0-100,        (aviso al responsable,
+                          umbral + tendencia)   runbook, antes de fallar)
+```
+
+---
+
+## 🚀 Cómo ejecutarlo
+
+### Opción A — Solo el tablero (la más rápida para la demo)
+
+El dashboard funciona por sí solo: si no encuentra el backend, corre la simulación en el propio navegador.
+
+1. Abre `dashboard/index.html` en el navegador.
+2. Despliega **"Modo demostración"**, elige una falla y presiona **"Simular la falla"**.
+
+### Opción B — Con el backend (recomendada)
+
+1. Python 3.10+ instalado.
+2. Instala dependencias:
    ```bash
    cd backend
-   ```
-3. Instala las dependencias:
-   ```bash
    pip install -r requirements.txt
    ```
-4. Inicia el servidor:
+3. Inicia el servidor:
    ```bash
    python server.py
    ```
-5. Abre en tu navegador: **http://localhost:8000** (El backend servirá el Dashboard automáticamente).
+4. Abre **http://localhost:9090** (el backend sirve el dashboard).
 
-### 3. Ejecutar la Simulación
-1. En el Dashboard, ingresa la IP de tu ESP32. El indicador superior derecho debería cambiar a "Conectado".
-2. **Sin Defensas (Fase 1)**: Lanza un ataque con alta intensidad (ej. 200 req/s, 100 concurrentes). Observa en el panel derecho cómo la latencia se dispara, los RPS caen a cero y el ESP32 colapsa por falta de memoria RAM.
-3. Detén el ataque y espera a que el ESP32 se recupere (o reinícialo físicamente).
-4. **Con Defensas (Fase 2)**: Activa las defensas desde el panel derecho. Lanza el ataque nuevamente. Observa cómo el sistema bloquea las IPs maliciosas y mantiene los recursos estables.
+### Opción C — Modo híbrido (con el ESP32 real)
+
+1. Abre `esp32/salud_firmware/main.cpp` en Arduino IDE o PlatformIO.
+2. Edita tu WiFi:
+   ```cpp
+   const char* WIFI_SSID     = "TU_RED_WIFI";
+   const char* WIFI_PASSWORD = "TU_CONTRASENA";
+   ```
+3. Instala las bibliotecas: `ESPAsyncWebServer`, `AsyncTCP`, `ArduinoJson` (v7+).
+4. Compila, sube y abre el Monitor Serie a `115200` para ver la **IP**.
+5. En el dashboard (Modo demostración → "Equipo real"), escribe esa IP.
+6. Para provocar una fuga de memoria **real** en el equipo durante la demo:
+   ```
+   POST http://<IP_DEL_ESP32>/stress?on=1   (activar)
+   POST http://<IP_DEL_ESP32>/stress?on=0   (liberar)
+   ```
+
+---
+
+## 📡 Endpoints
+
+### Backend (`server.py`, puerto 9090)
+| Método | Ruta | Qué hace |
+|--------|------|----------|
+| GET  | `/api/escenarios` | Catálogo de fallas simulables |
+| POST | `/api/simular/iniciar` | Inyecta un escenario y arranca el monitoreo |
+| POST | `/api/simular/detener` | Detiene la simulación |
+| POST | `/api/simular/resolver` | Ejecuta el runbook (contiene el riesgo) |
+| GET  | `/api/estado` | Estado actual: salud, riesgo, tendencia, resultado |
+| GET  | `/api/equipo/salud?ip=` | Lee la salud real de un ESP32 |
+| GET  | `/api/equipo/estado?ip=` | Verifica si el ESP32 responde |
+
+### Firmware ESP32 (puerto 80)
+| Método | Ruta | Qué hace |
+|--------|------|----------|
+| GET  | `/health` | Telemetría de salud en JSON |
+| GET  | `/` | Página de estado simple |
+| POST | `/stress?on=1\|0` | (Demo) fuerza o libera consumo de memoria real |
 
 ---
 
-## 🛡️ Estrategia de Mitigación (Paso a Paso)
+## 🧮 Cómo se calcula el riesgo
 
-Este proyecto implementa una defensa anti-DDoS multicapa directamente en el firmware del ESP32. Aquí explicamos cómo funciona y por qué es efectiva para mitigar ataques volumétricos en IoT.
+El índice no es una caja negra; es explicable y defendible ante el jurado:
 
-### Capa 1: Límite de Conexiones Concurrentes (Anti-Exhaustion)
-**Problema:** Un atacante abre cientos de conexiones simultáneas sin cerrarlas (ej. Slowloris), agotando la RAM del ESP32.
-**Implementación:**
-Definimos un `MAX_CONCURRENT_CONN` (ej. 8). Llevamos un contador atómico de las conexiones activas.
-```cpp
-if (currentConnections >= MAX_CONCURRENT_CONN) {
-    droppedRequests++;
-    request->send(503, "text/plain", "503 - Servidor Sobrecargado");
-    return false; // Cortar conexión inmediatamente
-}
-```
-
-### Capa 2: Rate Limiting por IP (Ventana Deslizante)
-**Problema:** Un atacante inunda el servidor con miles de peticiones válidas por segundo.
-**Implementación:**
-Mantenemos un arreglo (`ipTable`) de las últimas IPs vistas. Para cada IP, registramos el inicio de una ventana de tiempo (ej. 1 segundo) y contamos las peticiones.
-```cpp
-if (now - record.windowStart >= 1000) {
-    // Nueva ventana, reiniciar contador
-    record.windowStart = now;
-    record.requestsInWindow = 1;
-} else {
-    record.requestsInWindow++;
-    if (record.requestsInWindow > rateLimit) {
-        // Bloquear (Pasar a Capa 3)
-    }
-}
-```
-
-### Capa 3: Blacklisting Dinámico con Escalamiento
-**Problema:** Rate limit bloquea el exceso, pero seguir evaluando cada paquete consume CPU y memoria valiosa.
-**Implementación:**
-Si una IP excede el Rate Limit, se añade a una Blacklist temporal. Si la IP insiste, el tiempo de bloqueo se multiplica (Cooldown adaptativo).
-```cpp
-record.violations++;
-unsigned long duration = BASE_DURATION * record.violations * ESCALATION_FACTOR;
-record.blacklistedUntil = now + duration;
-```
-En el middleware, revisamos esto **antes** de procesar cualquier dato de la petición. Si la IP está en la lista, se descarta el request retornando un código `429 Too Many Requests` casi sin costo computacional.
-
-### El Rol de la Asincronía
-La decisión arquitectónica de usar `ESPAsyncWebServer` en lugar de `WebServer` estándar es clave. Al ser asíncrono, un ataque no bloquea el hilo principal del procesador. Esto permite que el ESP32:
-1. Siga calculando métricas.
-2. Mantenga vivo el stack de WiFi y TCP.
-3. Permita la intervención humana (Dashboard) para activar medidas o modificar reglas en medio del ataque.
+- **Nivel (80%):** qué tan cerca está la señal del punto de falla.
+- **Tendencia (hasta +35):** qué tan rápido sube, medido con una media móvil (EWMA). Una señal que se dispara pesa más que una que sube despacio.
+- **Umbral de aviso:** la *sensibilidad* configurable decide a qué nivel de riesgo se alerta. Más sensible = más anticipación, con algo más de riesgo de falsa alarma.
 
 ---
-> ⚠️ **Aviso de Uso Responsable:** Todo el software provisto en este repositorio debe utilizarse EXCLUSIVAMENTE contra dispositivos y redes de tu propiedad. El "Motor de Ataque" incluido puede interrumpir redes reales.
+
+## 📊 Cómo se demuestra que funciona
+
+La demo mide tres números por cada falla:
+
+1. **Cuándo lo detectamos** — el segundo en que el riesgo cruzó el umbral.
+2. **Cuándo habría fallado** — el segundo en que el equipo habría colapsado.
+3. **Tiempo ganado** — la diferencia: la ventana de anticipación.
+
+Escenario base (sin SecureGuard): la falla se descubre cuando el cliente llama. Con SecureGuard: el aviso llega antes. Esa diferencia es el reto resuelto, y es medible.
+
+---
+
+## 👥 Equipo ByteMe — Reto Zikit
