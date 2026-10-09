@@ -1,0 +1,12 @@
+inicio_incidente,tipo,es_real
+2026-10-09T02:00:00,reporte_rutas_nocturno,false
+2026-10-09T10:00:00,promo_2x1,false
+2026-10-09T13:05:00,trafico_hostil_lento,true
+2026-10-10T02:00:00,reporte_rutas_nocturno,false
+2026-10-10T03:00:00,snapshot_inventario,false
+2026-10-11T02:00:00,reporte_rutas_nocturno,false
+2026-10-12T02:00:00,reporte_rutas_nocturno,false
+2026-10-13T02:00:00,reporte_rutas_nocturno,false
+2026-10-13T07:35:00,fuga_memoria_worker,true
+2026-10-14T02:00:00,reporte_rutas_nocturno,false
+2026-10-14T07:20:00,agotamiento_pool_inventario,true
