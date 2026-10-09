@@ -1,322 +1,154 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="DDoS Simulation Lab — Entorno educativo para simular, monitorear y prevenir ataques DDoS contra ESP32">
-    <title>🛡️ DDoS Simulation Lab</title>
-
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-
-    <!-- Styles -->
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SecureGuard — Vigilancia preventiva de TI para PyMEs. Detecta fallas antes de que el cliente llame.">
+  <title>SecureGuard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;650;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-    <!-- ============================================ -->
-    <!--  HEADER                                      -->
-    <!-- ============================================ -->
-    <header class="header" id="header">
-        <div class="logo">
-            <span class="logo-icon">🛡️</span>
-            <span class="logo-text">DDoS Simulation Lab</span>
-            <span class="logo-badge">ESP32</span>
+  <div class="wrap">
+    <header class="app">
+      <div class="brand">
+        <div class="mark">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
         </div>
-        <div class="header-right">
-            <div class="attack-indicator" id="attack-indicator">
-                <span class="attack-dot"></span>
-                ATAQUE EN CURSO
-            </div>
-            <div class="connection-status" id="connection-status">
-                <span class="status-dot" id="status-dot"></span>
-                <span class="status-text">
-                    ESP32: <span id="esp-ip">Desconectado</span>
-                </span>
-            </div>
+        <div>
+          <div class="name">SecureGuard</div>
+          <div class="tag">Vigilancia preventiva · Mi Negocio</div>
         </div>
+      </div>
+      <div class="hbtns">
+        <span class="pill"><span class="pdot" id="pdot"></span><span id="pillTxt">Vigilando</span></span>
+        <button class="ibtn" id="themeBtn" aria-label="Cambiar tema">◐</button>
+      </div>
     </header>
 
-    <!-- ============================================ -->
-    <!--  DASHBOARD PRINCIPAL                         -->
-    <!-- ============================================ -->
-    <main class="dashboard">
+    <!-- ESTADO GENERAL -->
+    <section class="hero" id="hero">
+      <div class="eyebrow">Estado de tus sistemas</div>
+      <div class="status-ring">
+        <svg viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="10"/>
+          <circle id="ring" cx="60" cy="60" r="52" fill="none" stroke="var(--ok)" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="26" style="transition:stroke-dashoffset .5s, stroke .5s"/>
+        </svg>
+        <div class="ring-label">
+          <div class="score" id="score" style="color:var(--ok)">92</div>
+          <div class="of">de 100</div>
+        </div>
+      </div>
+      <div class="headline" id="headline">Todo funcionando con normalidad</div>
+      <div class="subline" id="subline">No hay señales de problemas. Si algo empieza a fallar, lo verás aquí antes de que afecte a tus clientes.</div>
+      <div class="badge" id="badge" style="background:var(--ok-bg);color:var(--ok)"><span class="bd" style="background:var(--ok)"></span>Saludable</div>
+    </section>
 
-        <!-- ======================================== -->
-        <!--  PANEL IZQUIERDO: CONTROL DE ATAQUE      -->
-        <!-- ======================================== -->
-        <section class="panel attack-panel" id="attack-panel">
-            <h2 class="panel-title">
-                <span class="panel-icon">⚡</span>
-                Panel de Ataque
-            </h2>
+    <!-- QUÉ PASA / QUÉ HACER -->
+    <div class="cols">
+      <div class="card">
+        <h3>Qué está pasando</h3>
+        <div class="whatline muted" id="whatText">Sin novedades. Todos los equipos responden bien.</div>
+        <div class="proj" id="projRow" hidden>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+          <span id="projText"></span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Qué conviene hacer</h3>
+        <div class="action-main action-wait" id="actionText">Nada por ahora. El sistema actúa solo cuando detecta un riesgo real.</div>
+        <button class="act-btn" id="actBtn" disabled>Resolver ahora</button>
+        <div class="act-sub" id="actSub">La acción es reversible y queda registrada. También puede ejecutarse automáticamente.</div>
+      </div>
+    </div>
 
-            <!-- Target IP -->
-            <div class="control-group">
-                <label for="target-ip">IP del Objetivo (ESP32)</label>
-                <input
-                    type="text"
-                    id="target-ip"
-                    placeholder="192.168.1.100"
-                    autocomplete="off"
-                    spellcheck="false"
-                >
-            </div>
+    <!-- AVISO AL RESPONSABLE -->
+    <div class="notif">
+      <div class="notif-card">
+        <div class="notif-head">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Aviso que recibe el responsable
+        </div>
+        <div class="notif-body" id="notifBody">
+          <div class="notif-empty">Cuando haya un riesgo, aquí se muestra el mensaje que llega al celular del encargado.</div>
+        </div>
+      </div>
+    </div>
 
-            <!-- Attack Type -->
-            <div class="control-group">
-                <label for="attack-type">Tipo de Ataque</label>
-                <select id="attack-type">
-                    <option value="http_flood">HTTP Flood (GET masivo)</option>
-                    <option value="http_post">HTTP POST Flood</option>
-                </select>
-            </div>
+    <!-- TENDENCIA -->
+    <div class="trend card">
+      <div class="thead">
+        <span class="tt">Nivel de riesgo en el tiempo</span>
+        <span class="tc" id="clock">en reposo</span>
+      </div>
+      <svg class="spark" id="spark" viewBox="0 0 400 120" preserveAspectRatio="none" role="img" aria-label="Tendencia del nivel de riesgo"></svg>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--accent)"></span>Nivel de riesgo</span>
+        <span><span class="sw dash"></span>Punto de aviso</span>
+      </div>
+    </div>
 
-            <!-- Intensity Slider -->
-            <div class="control-group">
-                <label for="intensity">
-                    Intensidad:
-                    <span class="range-value" id="intensity-val">100</span>
-                    <span class="range-unit">req/s</span>
-                </label>
-                <input
-                    type="range"
-                    id="intensity"
-                    min="1"
-                    max="500"
-                    value="100"
-                    step="1"
-                >
-                <div class="range-hints">
-                    <span>1</span>
-                    <span>250</span>
-                    <span>500</span>
-                </div>
-            </div>
+    <!-- RESULTADO -->
+    <div class="outcome">
+      <div class="oc"><div class="n" id="ocDetect">—</div><div class="l">Cuándo lo detectamos</div></div>
+      <div class="oc"><div class="n" id="ocFail">—</div><div class="l">Cuándo habría fallado</div></div>
+      <div class="oc win"><div class="n" id="ocWin">—</div><div class="l">Tiempo que ganaste para actuar</div></div>
+    </div>
 
-            <!-- Concurrent Connections Slider -->
-            <div class="control-group">
-                <label for="concurrent">
-                    Conexiones Concurrentes:
-                    <span class="range-value" id="concurrent-val">50</span>
-                </label>
-                <input
-                    type="range"
-                    id="concurrent"
-                    min="1"
-                    max="200"
-                    value="50"
-                    step="1"
-                >
-                <div class="range-hints">
-                    <span>1</span>
-                    <span>100</span>
-                    <span>200</span>
-                </div>
-            </div>
+    <!-- CONTROL / DEMO -->
+    <details class="control">
+      <summary>
+        <span>⚙ Modo demostración · simular una falla</span>
+        <span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span>
+      </summary>
+      <div class="cbody">
+        <div class="csub">Panel para la presentación. Elige una falla típica de un negocio y provoca que ocurra; arriba verás cómo el sistema la detecta y avisa antes de que el cliente lo note.</div>
 
-            <!-- Attack Button -->
-            <button class="btn btn-attack" id="attack-btn">
-                <span class="btn-icon">▶</span>
-                <span class="btn-label">LANZAR ATAQUE</span>
-            </button>
+        <div class="field">
+          <label>Origen de los datos</label>
+          <div class="seg" id="srcSeg">
+            <button class="on" data-src="sim">Simulado</button>
+            <button data-src="hw">Equipo real (ESP32)</button>
+          </div>
+          <div class="hw-row" id="hwRow" hidden>
+            <input type="text" id="espIp" placeholder="IP del ESP32 (ej. 192.168.1.100)" autocomplete="off" spellcheck="false">
+            <span class="hw-state" id="hwState">—</span>
+          </div>
+        </div>
 
-            <!-- Attack Statistics -->
-            <div class="attack-stats" id="attack-stats">
-                <h3 class="stats-title">📊 Estadísticas del Ataque</h3>
+        <div class="field">
+          <label for="failType">¿Qué falla quieres simular?</label>
+          <select id="failType">
+            <option value="memory">La caja registradora se queda sin memoria</option>
+            <option value="disk">El servidor se queda sin espacio</option>
+            <option value="latency">El sistema se pone lento</option>
+            <option value="errors">Empiezan a fallar las operaciones</option>
+          </select>
+        </div>
 
-                <div class="stat-row">
-                    <span class="stat-label">Enviadas</span>
-                    <span class="stat-value" id="stat-sent">0</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Exitosas</span>
-                    <span class="stat-value success" id="stat-success">0</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Fallidas / Timeout</span>
-                    <span class="stat-value danger" id="stat-failed">0</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Tasa de Éxito</span>
-                    <span class="stat-value" id="stat-rate">—</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Latencia Promedio</span>
-                    <span class="stat-value" id="stat-latency">—</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Duración</span>
-                    <span class="stat-value" id="stat-duration">0s</span>
-                </div>
-            </div>
+        <div class="field rangewrap">
+          <div class="rh"><label for="speed">Qué tan rápido se deteriora</label><span class="rv" id="speedVal">Media</span></div>
+          <input type="range" id="speed" min="1" max="3" step="1" value="2">
+        </div>
 
-            <!-- Activity Log -->
-            <div class="log-section">
-                <h3 class="stats-title">🖥️ Log de Actividad</h3>
-                <div class="log-terminal" id="log-terminal">
-                    <div class="log-entry info">
-                        <span class="log-ts">[--:--:--]</span> Sistema inicializado. Ingresa la IP del ESP32.
-                    </div>
-                </div>
-            </div>
-        </section>
+        <div class="field rangewrap">
+          <div class="rh"><label for="thr">Sensibilidad del aviso</label><span class="rv" id="thrVal">Normal</span></div>
+          <input type="range" id="thr" min="1" max="3" step="1" value="2">
+        </div>
 
-        <!-- ======================================== -->
-        <!--  PANEL DERECHO: MONITOREO DEL SERVIDOR   -->
-        <!-- ======================================== -->
-        <section class="panel monitor-panel" id="monitor-panel">
-            <h2 class="panel-title">
-                <span class="panel-icon">📊</span>
-                Monitor del Servidor (Víctima)
-            </h2>
+        <div class="runrow">
+          <button class="run" id="runBtn">Simular la falla</button>
+          <button class="ghost" id="resetBtn">Reiniciar</button>
+        </div>
+        <div class="backend-note" id="backendNote"></div>
+      </div>
+    </details>
 
-            <!-- KPI Cards -->
-            <div class="kpi-grid">
-                <div class="kpi-card kpi-cyan">
-                    <div class="kpi-icon">⏱️</div>
-                    <div class="kpi-value" id="kpi-latency">—</div>
-                    <div class="kpi-label">Latencia (ms)</div>
-                    <div class="kpi-bar">
-                        <div class="kpi-bar-fill" id="kpi-latency-bar" style="width: 0%"></div>
-                    </div>
-                </div>
-                <div class="kpi-card kpi-amber">
-                    <div class="kpi-icon">📈</div>
-                    <div class="kpi-value" id="kpi-rps">—</div>
-                    <div class="kpi-label">Peticiones/s</div>
-                    <div class="kpi-bar">
-                        <div class="kpi-bar-fill" id="kpi-rps-bar" style="width: 0%"></div>
-                    </div>
-                </div>
-                <div class="kpi-card kpi-purple">
-                    <div class="kpi-icon">🧠</div>
-                    <div class="kpi-value" id="kpi-memory">—</div>
-                    <div class="kpi-label">Uso de Memoria</div>
-                    <div class="kpi-bar">
-                        <div class="kpi-bar-fill" id="kpi-memory-bar" style="width: 0%"></div>
-                    </div>
-                </div>
-                <div class="kpi-card kpi-red">
-                    <div class="kpi-icon">🚫</div>
-                    <div class="kpi-value" id="kpi-blocked">—</div>
-                    <div class="kpi-label">Bloqueadas</div>
-                    <div class="kpi-bar">
-                        <div class="kpi-bar-fill" id="kpi-blocked-bar" style="width: 0%"></div>
-                    </div>
-                </div>
-            </div>
+    <div class="footnote">Comparación: sin vigilancia, la falla se descubre cuando el cliente llama molesto. Con SecureGuard, el aviso llega al cruzar el punto de riesgo. La diferencia es el tiempo que ganas para resolver sin que nadie lo note.</div>
+  </div>
 
-            <!-- Charts Grid -->
-            <div class="charts-grid">
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <span class="chart-icon">⏱️</span>
-                        <span class="chart-title">Latencia en Tiempo Real</span>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="chart-latency"></canvas>
-                    </div>
-                </div>
-
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <span class="chart-icon">📈</span>
-                        <span class="chart-title">Peticiones por Segundo</span>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="chart-rps"></canvas>
-                    </div>
-                </div>
-
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <span class="chart-icon">🧠</span>
-                        <span class="chart-title">Uso de Memoria (Heap)</span>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="chart-memory"></canvas>
-                    </div>
-                </div>
-
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <span class="chart-icon">🚫</span>
-                        <span class="chart-title">Permitidas vs Bloqueadas</span>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="chart-blocked"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Defense Controls -->
-            <div class="defense-section" id="defense-section">
-                <div class="defense-header">
-                    <span class="defense-icon">🔒</span>
-                    <span class="defense-title">Controles de Defensa del ESP32</span>
-                </div>
-
-                <div class="defense-body">
-                    <div class="defense-toggle-area">
-                        <button class="btn btn-defense" id="defense-btn">
-                            <span class="btn-icon">🛡️</span>
-                            <span class="btn-label">Activar Defensas</span>
-                        </button>
-                    </div>
-
-                    <div class="defense-config">
-                        <label for="rate-limit" class="defense-config-label">
-                            Rate Limit:
-                            <span class="range-value" id="rate-limit-val">10</span>
-                            <span class="range-unit">req/s por IP</span>
-                        </label>
-                        <input
-                            type="range"
-                            id="rate-limit"
-                            min="1"
-                            max="100"
-                            value="10"
-                            step="1"
-                        >
-                    </div>
-                </div>
-
-                <div class="defense-stats-bar">
-                    <div class="defense-stat">
-                        <span class="defense-stat-icon">🔴</span>
-                        IPs Bloqueadas: <strong id="defense-bl">0</strong>
-                    </div>
-                    <div class="defense-stat">
-                        <span class="defense-stat-icon">🚫</span>
-                        Total Rechazadas: <strong id="defense-blocked-total">0</strong>
-                    </div>
-                    <div class="defense-stat">
-                        <span class="defense-stat-icon">📶</span>
-                        WiFi RSSI: <strong id="defense-rssi">—</strong> dBm
-                    </div>
-                    <div class="defense-stat">
-                        <span class="defense-stat-icon">⏱️</span>
-                        Uptime: <strong id="defense-uptime">—</strong>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- ============================================ -->
-    <!--  FOOTER                                      -->
-    <!-- ============================================ -->
-    <footer class="footer">
-        <p>⚠️ Este sistema es <strong>exclusivamente para fines educativos</strong> en redes controladas propias.</p>
-    </footer>
-
-    <!-- App Logic -->
-    <script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

@@ -1,685 +1,309 @@
-/**
- * ======================================================
- *  🛡️ DDoS Simulation Lab — Dashboard Logic
- * ======================================================
- *  Control de ataque, visualización de métricas en tiempo
- *  real, y gestión de defensas del ESP32.
- *
- *  Dependencia: Chart.js v4+ (cargado desde CDN en HTML)
- * ======================================================
- */
+/* ======================================================
+   SecureGuard — Logica del tablero
+   Reto Zikit "Antes de que suene el telefono" — ByteMe
 
-// ===== CONFIGURACIÓN =====
-const BACKEND_URL = window.location.origin;   // Auto-detect cuando se sirve desde FastAPI
-const POLL_INTERVAL_MS = 1000;                // Polling cada 1 segundo
-const MAX_DATA_POINTS = 60;                   // 60 segundos de historia en las gráficas
+   Intenta usar el backend real (server.py). Si no responde,
+   corre la misma simulacion en el navegador, para que la
+   demo funcione siempre, con o sin servidor.
+   ====================================================== */
 
-// ===== ESTADO GLOBAL =====
-let isAttacking = false;
-let defenseEnabled = false;
-let isConnected = false;
-let pollTimer = null;
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const RING_LEN = 2 * Math.PI * 52;
+  const API = ""; // mismo origen cuando lo sirve server.py
 
-// ===== SELECTORES DOM =====
-const $ = (id) => document.getElementById(id);
+  // ---- Tema ----
+  $("themeBtn").addEventListener("click", () => {
+    const r = document.documentElement;
+    r.setAttribute("data-theme", r.getAttribute("data-theme") === "dark" ? "light" : "dark");
+  });
 
-const el = {
-    // Header
-    header:           $('header'),
-    attackIndicator:  $('attack-indicator'),
-    statusDot:        $('status-dot'),
-    espIp:            $('esp-ip'),
+  // ---- Escenarios (espejo del backend, para el modo sin servidor) ----
+  const SCN = {
+    memory: { driver: "mem", base: 12, fail: 100,
+      what: "La caja registradora está consumiendo cada vez más memoria. Si llega al límite, se reinicia y se pierde la venta en curso.",
+      proj: "A este ritmo llegaría al límite en unos 45 segundos.",
+      alertT: "Revisa la Caja 1",
+      alertB: "La caja principal se está quedando sin memoria y podría reiniciarse pronto. Conviene actuar ahora, antes de que se caiga en plena venta.",
+      act: "Liberar memoria y reiniciar el programa de la caja (sin perder la venta actual)." },
+    disk: { driver: "mem", base: 20, fail: 100,
+      what: "El servidor donde se guardan las ventas y facturas se está llenando. Sin espacio, deja de registrar operaciones.",
+      proj: "A este ritmo se llenaría en unos 40 segundos.",
+      alertT: "El servidor casi sin espacio",
+      alertB: "El disco del servidor está por llenarse. Si se llena, dejará de guardar ventas y facturas. Conviene liberar espacio ahora.",
+      act: "Liberar espacio y archivar registros antiguos de forma automática." },
+    latency: { driver: "lat", base: 40, fail: 600,
+      what: "El sistema está respondiendo cada vez más lento. Los cobros empiezan a tardar y los clientes esperan.",
+      proj: "En menos de 50 segundos sería demasiado lento para cobrar.",
+      alertT: "El sistema va lento",
+      alertB: "Los tiempos de respuesta están subiendo rápido. Antes de que sea inusable para cobrar, conviene revisarlo.",
+      act: "Liberar conexiones atascadas y ampliar el recurso del servidor." },
+    errors: { driver: "err", base: 0, fail: 50,
+      what: "Están empezando a fallar operaciones sueltas. Un fallo puede arrastrar a otros hasta detener el servicio.",
+      proj: "Podría caerse por completo en unos 45 segundos.",
+      alertT: "Fallos en aumento",
+      alertB: "Están apareciendo errores cada vez más seguido. Si no se corta, el servicio puede caerse del todo.",
+      act: "Reiniciar el servicio afectado y aislar el fallo antes de que se extienda." },
+  };
+  const SPEED = { 1: { l: "Lenta", k: 0.55, api: "lenta" }, 2: { l: "Media", k: 1, api: "media" }, 3: { l: "Rápida", k: 1.7, api: "rapida" } };
+  const SENS = { 1: { l: "Baja", v: 78, api: "baja" }, 2: { l: "Normal", v: 65, api: "normal" }, 3: { l: "Alta", v: 52, api: "alta" } };
 
-    // Attack Panel
-    attackPanel:      $('attack-panel'),
-    targetIp:         $('target-ip'),
-    attackType:       $('attack-type'),
-    intensity:        $('intensity'),
-    intensityVal:     $('intensity-val'),
-    concurrent:       $('concurrent'),
-    concurrentVal:    $('concurrent-val'),
-    attackBtn:        $('attack-btn'),
+  let S = null, timer = null, useBackend = false;
 
-    // Attack Stats
-    statSent:         $('stat-sent'),
-    statSuccess:      $('stat-success'),
-    statFailed:       $('stat-failed'),
-    statRate:         $('stat-rate'),
-    statLatency:      $('stat-latency'),
-    statDuration:     $('stat-duration'),
-
-    // KPIs
-    kpiLatency:       $('kpi-latency'),
-    kpiRps:           $('kpi-rps'),
-    kpiMemory:        $('kpi-memory'),
-    kpiBlocked:       $('kpi-blocked'),
-    kpiLatencyBar:    $('kpi-latency-bar'),
-    kpiRpsBar:        $('kpi-rps-bar'),
-    kpiMemoryBar:     $('kpi-memory-bar'),
-    kpiBlockedBar:    $('kpi-blocked-bar'),
-
-    // Defense
-    defenseSection:   $('defense-section'),
-    defenseBtn:       $('defense-btn'),
-    rateLimit:        $('rate-limit'),
-    rateLimitVal:     $('rate-limit-val'),
-    defenseBl:        $('defense-bl'),
-    defenseBlockedT:  $('defense-blocked-total'),
-    defenseRssi:      $('defense-rssi'),
-    defenseUptime:    $('defense-uptime'),
-
-    // Log
-    logTerminal:      $('log-terminal'),
-};
-
-// ===== DATOS PARA GRÁFICAS =====
-const chartStore = {
-    labels:   Array(MAX_DATA_POINTS).fill(''),
-    latency:  [],
-    rps:      [],
-    memory:   [],
-    allowed:  [],
-    blocked:  [],
-};
-
-// Para calcular deltas (peticiones nuevas por segundo)
-let prevTotalReq = 0;
-let prevBlockedReq = 0;
-
-// ===== GRÁFICAS (Chart.js) =====
-let charts = {};
-
-/**
- * Crea una gráfica de línea con área rellena.
- */
-function createLineChart(canvasId, rgbColor, yMin = 0, yMax = undefined) {
-    const ctx = document.getElementById(canvasId).getContext('2d');
-
-    // Gradiente de relleno
-    const gradient = ctx.createLinearGradient(0, 0, 0, 160);
-    gradient.addColorStop(0, `rgba(${rgbColor}, 0.25)`);
-    gradient.addColorStop(1, `rgba(${rgbColor}, 0.0)`);
-
-    return new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: chartStore.labels,
-            datasets: [{
-                data: [],
-                borderColor: `rgb(${rgbColor})`,
-                backgroundColor: gradient,
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 0,
-                pointHitRadius: 8,
-            }],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 180 },
-            interaction: { intersect: false, mode: 'index' },
-            scales: {
-                x: { display: false },
-                y: {
-                    min: yMin,
-                    max: yMax,
-                    grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
-                    border: { display: false },
-                    ticks: {
-                        color: '#4a5568',
-                        font: { size: 10, family: 'JetBrains Mono' },
-                        maxTicksLimit: 5,
-                        padding: 8,
-                    },
-                },
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: 'rgba(10,16,28,0.92)',
-                    titleFont: { family: 'JetBrains Mono', size: 11 },
-                    bodyFont: { family: 'JetBrains Mono', size: 11 },
-                    borderColor: 'rgba(255,255,255,0.08)',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                    padding: 10,
-                },
-            },
-        },
-    });
-}
-
-/**
- * Crea una gráfica de barras apiladas (permitidas vs bloqueadas).
- */
-function createStackedBarChart(canvasId) {
-    const ctx = document.getElementById(canvasId).getContext('2d');
-
-    return new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: chartStore.labels,
-            datasets: [
-                {
-                    label: 'Permitidas',
-                    data: [],
-                    backgroundColor: `rgba(0, 230, 118, 0.55)`,
-                    borderRadius: 2,
-                    barPercentage: 0.85,
-                },
-                {
-                    label: 'Bloqueadas',
-                    data: [],
-                    backgroundColor: `rgba(255, 45, 85, 0.55)`,
-                    borderRadius: 2,
-                    barPercentage: 0.85,
-                },
-            ],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 180 },
-            scales: {
-                x: { display: false, stacked: true },
-                y: {
-                    stacked: true,
-                    grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
-                    border: { display: false },
-                    ticks: {
-                        color: '#4a5568',
-                        font: { size: 10, family: 'JetBrains Mono' },
-                        maxTicksLimit: 5,
-                        padding: 8,
-                    },
-                },
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    align: 'end',
-                    labels: {
-                        color: '#64748b',
-                        font: { size: 10, family: 'Inter' },
-                        boxWidth: 8,
-                        boxHeight: 8,
-                        usePointStyle: true,
-                        pointStyle: 'circle',
-                        padding: 12,
-                    },
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(10,16,28,0.92)',
-                    titleFont: { family: 'JetBrains Mono', size: 11 },
-                    bodyFont: { family: 'JetBrains Mono', size: 11 },
-                    borderColor: 'rgba(255,255,255,0.08)',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                },
-            },
-        },
-    });
-}
-
-/**
- * Inicializa las 4 gráficas del dashboard.
- */
-function initCharts() {
-    charts.latency = createLineChart('chart-latency', '0, 240, 255');
-    charts.rps     = createLineChart('chart-rps', '255, 171, 0');
-    charts.memory  = createLineChart('chart-memory', '168, 85, 247', 0, 100);
-    charts.blocked = createStackedBarChart('chart-blocked');
-}
-
-/**
- * Agrega un dato al array circular del chart.
- */
-function pushChartData(arr, value) {
-    arr.push(value);
-    if (arr.length > MAX_DATA_POINTS) arr.shift();
-}
-
-/**
- * Actualiza las gráficas con los datos actuales.
- */
-function refreshCharts() {
-    charts.latency.data.datasets[0].data = [...chartStore.latency];
-    charts.latency.update('none');
-
-    charts.rps.data.datasets[0].data = [...chartStore.rps];
-    charts.rps.update('none');
-
-    charts.memory.data.datasets[0].data = [...chartStore.memory];
-    charts.memory.update('none');
-
-    charts.blocked.data.datasets[0].data = [...chartStore.allowed];
-    charts.blocked.data.datasets[1].data = [...chartStore.blocked];
-    charts.blocked.update('none');
-}
-
-// ===== LOG DE ACTIVIDAD =====
-
-/**
- * Agrega una entrada al terminal de log.
- */
-function addLog(message, type = 'info') {
-    const now = new Date();
-    const ts = now.toLocaleTimeString('es-MX', { hour12: false });
-
-    const entry = document.createElement('div');
-    entry.className = `log-entry ${type}`;
-    entry.innerHTML = `<span class="log-ts">[${ts}]</span> ${message}`;
-
-    el.logTerminal.appendChild(entry);
-    el.logTerminal.scrollTop = el.logTerminal.scrollHeight;
-
-    // Mantener máximo 60 entradas
-    while (el.logTerminal.children.length > 60) {
-        el.logTerminal.removeChild(el.logTerminal.firstChild);
-    }
-}
-
-// ===== API CALLS =====
-
-/**
- * Wrapper para llamadas al backend.
- */
-async function api(endpoint, method = 'GET', body = null) {
+  // ---- Deteccion del backend ----
+  async function detectBackend() {
     try {
-        const opts = {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-        };
-        if (body) opts.body = JSON.stringify(body);
+      const r = await fetch(API + "/api/estado", { signal: AbortSignal.timeout(1500) });
+      if (r.ok) { useBackend = true; note("Conectado al servidor de monitoreo."); return; }
+    } catch (e) { /* sin backend */ }
+    useBackend = false;
+    note("Modo autónomo (sin servidor). La simulación corre en esta página.");
+  }
+  function note(txt) { $("backendNote").textContent = txt; }
 
-        const res = await fetch(`${BACKEND_URL}${endpoint}`, opts);
-        if (!res.ok) {
-            const err = await res.text();
-            throw new Error(`HTTP ${res.status}: ${err}`);
-        }
-        return await res.json();
-    } catch (err) {
-        console.error(`[API] ${method} ${endpoint}:`, err.message);
-        return null;
+  // ---- Controles ----
+  $("speed").addEventListener("input", (e) => ($("speedVal").textContent = SPEED[e.target.value].l));
+  $("thr").addEventListener("input", (e) => ($("thrVal").textContent = SENS[e.target.value].l));
+  document.querySelectorAll("#srcSeg button").forEach((b) =>
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#srcSeg button").forEach((x) => x.classList.remove("on"));
+      b.classList.add("on");
+      $("hwRow").hidden = b.dataset.src !== "hw";
+    })
+  );
+  $("espIp").addEventListener("change", checkEsp);
+  $("runBtn").addEventListener("click", run);
+  $("resetBtn").addEventListener("click", reset);
+  $("actBtn").addEventListener("click", resolve);
+
+  async function checkEsp() {
+    const ip = $("espIp").value.trim();
+    if (!ip) { $("hwState").textContent = "—"; return; }
+    $("hwState").textContent = "buscando…";
+    if (useBackend) {
+      try {
+        const r = await fetch(API + "/api/equipo/estado?ip=" + encodeURIComponent(ip), { signal: AbortSignal.timeout(3000) });
+        const d = await r.json();
+        $("hwState").textContent = d.reachable ? "conectado ✓" : "sin respuesta";
+      } catch (e) { $("hwState").textContent = "sin respuesta"; }
+    } else {
+      $("hwState").textContent = "requiere servidor";
     }
-}
+  }
 
-// ===== CONTROL DE ATAQUE =====
+  // ---- Reset ----
+  function reset() {
+    clearInterval(timer); timer = null; S = null;
+    paintHealth(92, "ok");
+    $("headline").textContent = "Todo funcionando con normalidad";
+    $("subline").textContent = "No hay señales de problemas. Si algo empieza a fallar, lo verás aquí antes de que afecte a tus clientes.";
+    setBadge("ok", "Saludable");
+    $("whatText").textContent = "Sin novedades. Todos los equipos responden bien.";
+    $("whatText").className = "whatline muted";
+    $("projRow").hidden = true;
+    $("actionText").textContent = "Nada por ahora. El sistema actúa solo cuando detecta un riesgo real.";
+    $("actionText").className = "action-main action-wait";
+    const done = document.querySelector(".act-done"); if (done) done.remove();
+    $("actBtn").hidden = false; $("actBtn").disabled = true; $("actBtn").textContent = "Resolver ahora";
+    $("actSub").hidden = false;
+    $("notifBody").innerHTML = '<div class="notif-empty">Cuando haya un riesgo, aquí se muestra el mensaje que llega al celular del encargado.</div>';
+    $("pdot").style.background = "var(--ok)"; $("pillTxt").textContent = "Vigilando";
+    $("clock").textContent = "en reposo";
+    $("ocDetect").textContent = "—"; $("ocFail").textContent = "—"; $("ocWin").textContent = "—";
+    drawSpark([], 65);
+  }
 
-/**
- * Inicia el ataque con la configuración actual del panel.
- */
-async function startAttack() {
-    const ip = el.targetIp.value.trim();
-    if (!ip) {
-        addLog('❌ Ingresa la dirección IP del ESP32', 'error');
-        el.targetIp.focus();
-        el.targetIp.style.borderColor = 'var(--red)';
-        setTimeout(() => el.targetIp.style.borderColor = '', 2000);
+  // ---- Arranque de la simulacion ----
+  async function run() {
+    reset();
+    const key = $("failType").value;
+    const sp = SPEED[$("speed").value];
+    const se = SENS[$("thr").value];
+    $("runBtn").disabled = true;
+    $("pillTxt").textContent = "Analizando…";
+
+    if (useBackend) {
+      try {
+        await fetch(API + "/api/simular/iniciar", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ escenario: key, velocidad: sp.api, sensibilidad: se.api }),
+        });
+        S = { mode: "backend", key, thr: se.v, alerted: false, done: false };
+        timer = setInterval(pollBackend, 350);
         return;
+      } catch (e) { useBackend = false; note("Se perdió el servidor; sigo en modo autónomo."); }
     }
+    // modo local
+    const scn = SCN[key];
+    S = { mode: "local", scn, key, k: sp.k, thr: se.v, t: 0, hist: [], prev: 8, ewma: scn.base,
+          detectT: null, failT: null, alerted: false, done: false };
+    timer = setInterval(tickLocal, 350);
+  }
 
-    const config = {
-        target_ip: ip,
-        intensity: parseInt(el.intensity.value, 10),
-        concurrent: parseInt(el.concurrent.value, 10),
-        attack_type: el.attackType.value,
-    };
-
-    addLog(`🚀 Iniciando <strong>${config.attack_type}</strong> → ${ip}`, 'warn');
-    addLog(`   ⚙️ Intensidad: ${config.intensity} req/s | Concurrentes: ${config.concurrent}`, 'info');
-
-    const result = await api('/api/attack/start', 'POST', config);
-
-    if (result) {
-        isAttacking = true;
-        syncAttackUI();
-        addLog('⚡ ¡Ataque en curso! El ESP32 está recibiendo tráfico.', 'error');
-    } else {
-        addLog('❌ Error al iniciar el ataque. ¿El backend está corriendo?', 'error');
+  // ---- Backend: solo pintar lo que dice el servidor ----
+  async function pollBackend() {
+    try {
+      const r = await fetch(API + "/api/estado");
+      const d = await r.json();
+      applyState(d);
+      if (!d.is_running) { clearInterval(timer); timer = null; $("runBtn").disabled = false; }
+    } catch (e) {
+      clearInterval(timer); timer = null; $("runBtn").disabled = false;
     }
-}
+  }
 
-/**
- * Detiene el ataque en curso.
- */
-async function stopAttack() {
-    addLog('🛑 Deteniendo ataque...', 'warn');
-
-    const result = await api('/api/attack/stop', 'POST');
-
-    if (result) {
-        isAttacking = false;
-        syncAttackUI();
-        addLog(
-            `✅ Ataque detenido. Enviadas: ${fmt(result.total_sent)} | ` +
-            `Éxito: ${result.success_rate}%`,
-            'success'
-        );
-    } else {
-        addLog('⚠️ No se pudo confirmar la detención del ataque', 'warn');
+  function applyState(d) {
+    const band = d.estado;
+    paintHealth(d.salud, band);
+    S.hist = d.history || [];
+    drawSpark(S.hist, d.umbral);
+    $("clock").textContent = d.t + " s";
+    if (band === "warn" && !S.warned) {
+      S.warned = true;
+      $("headline").textContent = "Hay una señal temprana";
+      $("subline").textContent = "Algo empezó a comportarse distinto. Aún no afecta a nadie, pero conviene vigilarlo.";
+      setBadge("warn", "Atención");
+      $("whatText").textContent = d.descripcion; $("whatText").className = "whatline";
+      const scn = SCN[S.key]; $("projText").textContent = scn ? scn.proj : ""; $("projRow").hidden = false;
     }
-}
-
-/**
- * Sincroniza la UI del panel de ataque con el estado actual.
- */
-function syncAttackUI() {
-    // Botón
-    const btnIcon = el.attackBtn.querySelector('.btn-icon');
-    const btnLabel = el.attackBtn.querySelector('.btn-label');
-
-    el.attackBtn.classList.toggle('active', isAttacking);
-    btnIcon.textContent = isAttacking ? '⏹' : '▶';
-    btnLabel.textContent = isAttacking ? 'DETENER ATAQUE' : 'LANZAR ATAQUE';
-
-    // Panel
-    el.attackPanel.classList.toggle('active', isAttacking);
-
-    // Header
-    el.header.classList.toggle('attacking', isAttacking);
-    el.attackIndicator.classList.toggle('visible', isAttacking);
-
-    // Deshabilitar controles durante ataque
-    el.targetIp.disabled = isAttacking;
-    el.attackType.disabled = isAttacking;
-    el.intensity.disabled = isAttacking;
-    el.concurrent.disabled = isAttacking;
-}
-
-// ===== CONTROL DE DEFENSAS =====
-
-/**
- * Activa o desactiva las defensas en el ESP32.
- */
-async function toggleDefense() {
-    const ip = el.targetIp.value.trim();
-    if (!ip) {
-        addLog('❌ Ingresa la IP del ESP32 primero', 'error');
-        return;
+    if (d.alertado && !S.alerted) {
+      S.alerted = true;
+      const scn = SCN[S.key];
+      fireAlert(scn.alertT, scn.alertB, d.accion_sugerida);
     }
+    if (d.resultado) showResult(d.resultado);
+  }
 
-    const result = await api(`/api/defense/toggle?target_ip=${encodeURIComponent(ip)}`, 'POST');
+  // ---- Local: calcular y pintar ----
+  function tickLocal() {
+    S.t++;
+    const scn = S.scn;
+    const p = Math.min((S.t * S.k) / 42, 1.25);
+    const val = Math.min(scn.base + (scn.fail - scn.base) * (p * p), scn.fail);
+    const span = scn.fail - scn.base;
+    const level = clamp(((val - scn.base) / span) * 100, 0, 100);
+    S.ewma += 0.5 * (val - S.ewma);
+    const trend = clamp(((val - S.ewma) / span) * 100 * 1.6, 0, 35);
+    let risk = clamp(level * 0.8 + trend, 0, 100);
+    risk = Math.max(risk, S.prev - 2); S.prev = risk;
+    S.hist.push(risk);
 
-    if (result) {
-        defenseEnabled = result.enabled;
-        syncDefenseUI();
-        addLog(
-            defenseEnabled
-                ? '🛡️ Defensas <strong>ACTIVADAS</strong> — Rate Limit + Blacklist + Conn Limit'
-                : '⚠️ Defensas <strong>DESACTIVADAS</strong> — Servidor vulnerable',
-            defenseEnabled ? 'success' : 'warn'
-        );
-    } else {
-        addLog('❌ No se pudo comunicar con el ESP32. ¿Está conectado?', 'error');
+    const band = risk < 40 ? "ok" : risk < S.thr ? "warn" : "crit";
+    paintHealth(Math.round(100 - risk), band);
+    drawSpark(S.hist, S.thr);
+    $("clock").textContent = S.t + " s";
+
+    if (band === "warn" && !S.warned) {
+      S.warned = true;
+      $("headline").textContent = "Hay una señal temprana";
+      $("subline").textContent = "Algo empezó a comportarse distinto. Aún no afecta a nadie, pero conviene vigilarlo.";
+      setBadge("warn", "Atención");
+      $("whatText").textContent = scn.what; $("whatText").className = "whatline";
+      $("projText").textContent = scn.proj; $("projRow").hidden = false;
     }
-}
+    if (!S.alerted && risk >= S.thr) { S.alerted = true; S.detectT = S.t; fireAlert(scn.alertT, scn.alertB, scn.act); }
+    if (S.failT === null && val >= scn.fail) { S.failT = S.t; finishLocal(); }
+    if (S.t > 80) finishLocal();
+  }
 
-/**
- * Envía un nuevo valor de rate limit al ESP32.
- */
-async function applyRateLimit() {
-    const ip = el.targetIp.value.trim();
-    if (!ip) return;
+  function finishLocal() {
+    clearInterval(timer); timer = null;
+    const failEst = S.failT !== null ? S.failT : (S.detectT !== null ? S.detectT + Math.round(12 / S.k) : null);
+    showResult({ detect_t: S.detectT, fail_t: failEst, ventana_s: (S.detectT !== null && failEst !== null) ? failEst - S.detectT : null });
+    $("runBtn").disabled = false;
+  }
 
-    const value = parseInt(el.rateLimit.value, 10);
-    const result = await api(
-        `/api/defense/ratelimit?target_ip=${encodeURIComponent(ip)}&value=${value}`,
-        'POST'
-    );
+  // ---- Alerta + runbook ----
+  function fireAlert(title, body, action) {
+    setBadge("crit", "Riesgo");
+    $("headline").textContent = "Conviene actuar ahora";
+    $("subline").textContent = "El sistema avisó al responsable antes de que el problema llegara al cliente.";
+    $("actionText").textContent = action; $("actionText").className = "action-main";
+    $("actBtn").disabled = false;
+    $("pdot").style.background = "var(--crit)"; $("pillTxt").textContent = "Aviso enviado";
+    $("notifBody").innerHTML =
+      '<div class="bubble"><div class="bt">⚠ ' + title + '</div><div class="bb">' + body +
+      '</div><div class="bm">SecureGuard · hace un momento</div></div>';
+  }
 
-    if (result) {
-        addLog(`⚙️ Rate limit ajustado a <strong>${result.rate_limit}</strong> req/s por IP`, 'info');
+  async function resolve() {
+    if (!S || S.done) return;
+    S.done = true;
+    $("actBtn").hidden = true; $("actSub").hidden = true;
+    const d = document.createElement("div"); d.className = "act-done";
+    d.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg> Resuelto — el riesgo se controló a tiempo';
+    $("actBtn").after(d);
+    $("headline").textContent = "Resuelto a tiempo";
+    $("subline").textContent = "Se aplicó la acción antes del punto de falla. El cliente nunca llegó a notarlo.";
+    $("pillTxt").textContent = "Vigilando"; $("pdot").style.background = "var(--ok)";
+
+    if (S.mode === "backend") {
+      try { await fetch(API + "/api/simular/resolver", { method: "POST" }); } catch (e) {}
+      return; // el poll seguira pintando la recuperacion
     }
-}
+    // recuperacion local
+    clearInterval(timer);
+    let v = S.prev;
+    const down = setInterval(() => {
+      v -= 7; if (v <= 12) { v = 8; clearInterval(down); }
+      S.hist.push(clamp(v, 0, 100));
+      drawSpark(S.hist, S.thr);
+      paintHealth(Math.round(100 - v), v < 40 ? "ok" : "warn");
+      if (v <= 12) setBadge("ok", "Recuperado");
+    }, 300);
+  }
 
-/**
- * Sincroniza la UI de defensa.
- */
-function syncDefenseUI() {
-    const btnLabel = el.defenseBtn.querySelector('.btn-label');
-    el.defenseBtn.classList.toggle('active', defenseEnabled);
-    btnLabel.textContent = defenseEnabled ? 'Defensas ACTIVAS' : 'Activar Defensas';
-    el.defenseSection.classList.toggle('active', defenseEnabled);
-}
+  function showResult(r) {
+    if (!r) return;
+    if (r.detect_t != null) $("ocDetect").textContent = r.detect_t + " s";
+    if (r.fail_t != null) $("ocFail").textContent = r.fail_t + " s";
+    if (r.ventana_s != null) $("ocWin").textContent = r.ventana_s + " s";
+  }
 
-// ===== POLLING DE MÉTRICAS =====
+  // ---- Pintado ----
+  function paintHealth(score, band) {
+    const col = band === "ok" ? "var(--ok)" : band === "warn" ? "var(--warn)" : "var(--crit)";
+    $("score").textContent = score;
+    $("score").style.color = col;
+    $("ring").style.stroke = col;
+    $("ring").style.strokeDashoffset = RING_LEN * (1 - score / 100);
+    $("hero").style.borderColor = band === "ok" ? "var(--line)" : col;
+  }
+  function setBadge(band, txt) {
+    const col = band === "ok" ? "var(--ok)" : band === "warn" ? "var(--warn)" : "var(--crit)";
+    const bg = band === "ok" ? "var(--ok-bg)" : band === "warn" ? "var(--warn-bg)" : "var(--crit-bg)";
+    const b = $("badge"); b.style.background = bg; b.style.color = col;
+    b.innerHTML = '<span class="bd" style="background:' + col + '"></span>' + txt;
+  }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
-/**
- * Consulta métricas del backend + ESP32 y actualiza toda la UI.
- */
-async function pollMetrics() {
-    const ip = el.targetIp.value.trim();
-    const data = await api(`/api/metrics?target_ip=${encodeURIComponent(ip || '')}`);
-
-    if (!data) return;
-
-    // ---- Estado de conexión ----
-    const wasConnected = isConnected;
-    isConnected = data.connected;
-    el.statusDot.classList.toggle('connected', isConnected);
-    el.espIp.textContent = isConnected ? ip : 'Desconectado';
-
-    if (isConnected && !wasConnected) {
-        addLog(`✅ Conectado al ESP32 en <strong>${ip}</strong>`, 'success');
-    } else if (!isConnected && wasConnected) {
-        addLog('⚠️ Conexión con el ESP32 perdida', 'error');
+  function drawSpark(data, thr) {
+    const W = 400, H = 120, pad = 8;
+    let el = "";
+    el += '<line x1="0" y1="' + (H - pad) + '" x2="' + W + '" y2="' + (H - pad) + '" stroke="var(--line)" stroke-width="1"/>';
+    if (thr != null) {
+      const ty = H - pad - (thr / 100) * (H - 2 * pad);
+      el += '<line x1="0" y1="' + ty + '" x2="' + W + '" y2="' + ty + '" stroke="var(--warn)" stroke-width="1.4" stroke-dasharray="5 4"/>';
     }
-
-    // ---- Stats del motor de ataque ----
-    const atk = data.attack;
-    if (atk) {
-        el.statSent.textContent = fmt(atk.total_sent);
-        el.statSuccess.textContent = fmt(atk.total_success);
-        el.statFailed.textContent = fmt(atk.total_failed);
-        el.statRate.textContent = `${atk.success_rate}%`;
-        el.statRate.className = `stat-value ${atk.success_rate > 80 ? 'success' : atk.success_rate > 40 ? 'warning' : 'danger'}`;
-        el.statLatency.textContent = `${atk.avg_response_ms} ms`;
-        el.statDuration.textContent = fmtDuration(atk.duration_s);
-
-        // Sincronizar estado
-        if (atk.is_running !== isAttacking) {
-            isAttacking = atk.is_running;
-            syncAttackUI();
-        }
+    if (data.length > 1) {
+      const pts = data.map((v, i) => [Math.min((i / 80) * W, W), H - pad - (clamp(v, 0, 100) / 100) * (H - 2 * pad)]);
+      let area = "M" + pts[0][0] + "," + (H - pad);
+      pts.forEach((p) => (area += " L" + p[0].toFixed(1) + "," + p[1].toFixed(1)));
+      area += " L" + pts[pts.length - 1][0].toFixed(1) + "," + (H - pad) + " Z";
+      const last = data[data.length - 1];
+      const col = last < 40 ? "var(--ok)" : last < (thr || 65) ? "var(--warn)" : "var(--crit)";
+      el += '<path d="' + area + '" fill="' + col + '" opacity="0.1"/>';
+      let line = "M" + pts[0][0] + "," + pts[0][1].toFixed(1);
+      pts.forEach((p) => (line += " L" + p[0].toFixed(1) + "," + p[1].toFixed(1)));
+      el += '<path d="' + line + '" fill="none" stroke="' + col + '" stroke-width="2.4" stroke-linejoin="round"/>';
+      const lp = pts[pts.length - 1];
+      el += '<circle cx="' + lp[0].toFixed(1) + '" cy="' + lp[1].toFixed(1) + '" r="4" fill="' + col + '"/>';
     }
+    $("spark").innerHTML = el;
+  }
 
-    // ---- Telemetría del ESP32 ----
-    const esp = data.esp32;
-    if (esp) {
-        updateESP32Metrics(esp);
-    } else {
-        updateESP32Offline();
-    }
-}
-
-/**
- * Actualiza KPIs, gráficas y defensas con datos del ESP32.
- */
-function updateESP32Metrics(esp) {
-    // KPI values
-    const latency = Math.round(esp.avg_response_ms);
-    const rps = esp.requests_per_second;
-    const memPct = Math.round(esp.heap_usage_pct);
-    const blocked = esp.blocked_requests + esp.dropped_requests;
-
-    setKPI(el.kpiLatency, `${latency}`, el.kpiLatencyBar, Math.min(latency / 500 * 100, 100));
-    setKPI(el.kpiRps, `${rps}`, el.kpiRpsBar, Math.min(rps / 200 * 100, 100));
-    setKPI(el.kpiMemory, `${memPct}%`, el.kpiMemoryBar, memPct);
-    setKPI(el.kpiBlocked, fmt(blocked), el.kpiBlockedBar, Math.min(blocked / 1000 * 100, 100));
-
-    // Chart data
-    pushChartData(chartStore.latency, esp.avg_response_ms);
-    pushChartData(chartStore.rps, rps);
-    pushChartData(chartStore.memory, esp.heap_usage_pct);
-
-    // Calcular deltas para barras de bloqueadas
-    const totalNow = esp.total_requests;
-    const blockedNow = esp.blocked_requests;
-    const allowedDelta = Math.max(0, (totalNow - blockedNow) - (prevTotalReq - prevBlockedReq));
-    const blockedDelta = Math.max(0, blockedNow - prevBlockedReq);
-    pushChartData(chartStore.allowed, allowedDelta);
-    pushChartData(chartStore.blocked, blockedDelta);
-    prevTotalReq = totalNow;
-    prevBlockedReq = blockedNow;
-
-    refreshCharts();
-
-    // Defense info
-    defenseEnabled = esp.defense_enabled;
-    syncDefenseUI();
-    el.defenseBl.textContent = esp.blacklisted_ips;
-    el.defenseBlockedT.textContent = fmt(esp.blocked_requests + esp.dropped_requests);
-    el.defenseRssi.textContent = esp.wifi_rssi;
-    el.defenseUptime.textContent = fmtDuration(esp.uptime_s);
-
-    if (esp.rate_limit !== undefined) {
-        el.rateLimitVal.textContent = esp.rate_limit;
-    }
-}
-
-/**
- * Actualiza UI cuando el ESP32 no responde.
- */
-function updateESP32Offline() {
-    pushChartData(chartStore.latency, null);
-    pushChartData(chartStore.rps, null);
-    pushChartData(chartStore.memory, null);
-    pushChartData(chartStore.allowed, 0);
-    pushChartData(chartStore.blocked, 0);
-
-    el.kpiLatency.textContent = '—';
-    el.kpiRps.textContent = '—';
-    el.kpiMemory.textContent = '—';
-    el.kpiBlocked.textContent = '—';
-
-    refreshCharts();
-}
-
-/**
- * Actualiza un KPI card con animación flash.
- */
-function setKPI(valueEl, text, barEl, barPct) {
-    if (valueEl.textContent !== text) {
-        valueEl.textContent = text;
-        valueEl.classList.remove('value-flash');
-        void valueEl.offsetWidth; // Trigger reflow
-        valueEl.classList.add('value-flash');
-    }
-    if (barEl) {
-        barEl.style.width = `${Math.min(100, Math.max(0, barPct))}%`;
-    }
-}
-
-// ===== UTILIDADES DE FORMATO =====
-
-/**
- * Formatea números grandes (1K, 1.2M, etc).
- */
-function fmt(n) {
-    if (n == null) return '—';
-    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-    if (n >= 10_000) return (n / 1_000).toFixed(1) + 'K';
-    if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
-    return String(Math.round(n));
-}
-
-/**
- * Formatea una duración en segundos a formato legible.
- */
-function fmtDuration(seconds) {
-    if (!seconds || seconds < 0) return '0s';
-    const s = Math.floor(seconds);
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
-    if (h > 0) return `${h}h ${m}m ${sec}s`;
-    if (m > 0) return `${m}m ${sec}s`;
-    return `${sec}s`;
-}
-
-// ===== EVENT LISTENERS =====
-
-function initEventListeners() {
-    // — Range sliders en tiempo real —
-    el.intensity.addEventListener('input', () => {
-        el.intensityVal.textContent = el.intensity.value;
-    });
-
-    el.concurrent.addEventListener('input', () => {
-        el.concurrentVal.textContent = el.concurrent.value;
-    });
-
-    el.rateLimit.addEventListener('input', () => {
-        el.rateLimitVal.textContent = el.rateLimit.value;
-    });
-
-    // Enviar rate limit al ESP32 cuando el slider se suelta
-    el.rateLimit.addEventListener('change', applyRateLimit);
-
-    // — Botón de ataque —
-    el.attackBtn.addEventListener('click', () => {
-        if (isAttacking) {
-            stopAttack();
-        } else {
-            startAttack();
-        }
-    });
-
-    // — Botón de defensa —
-    el.defenseBtn.addEventListener('click', toggleDefense);
-
-    // — Persistir IP del target —
-    el.targetIp.addEventListener('change', () => {
-        localStorage.setItem('ddos_lab_target_ip', el.targetIp.value.trim());
-    });
-
-    // — Restaurar IP guardada —
-    const savedIp = localStorage.getItem('ddos_lab_target_ip');
-    if (savedIp) {
-        el.targetIp.value = savedIp;
-    }
-
-    // — Atajos de teclado —
-    document.addEventListener('keydown', (e) => {
-        // Ctrl+Enter = toggle ataque
-        if (e.ctrlKey && e.key === 'Enter') {
-            e.preventDefault();
-            el.attackBtn.click();
-        }
-        // Ctrl+D = toggle defensa
-        if (e.ctrlKey && e.key === 'd') {
-            e.preventDefault();
-            el.defenseBtn.click();
-        }
-    });
-}
-
-// ===== INICIALIZACIÓN =====
-
-function init() {
-    // Inicializar gráficas
-    initCharts();
-
-    // Registrar eventos
-    initEventListeners();
-
-    // Log de bienvenida
-    addLog('🛡️ <strong>DDoS Simulation Lab v1.0</strong>', 'info');
-    addLog('📡 Conectando con el backend...', 'info');
-
-    // Primer poll inmediato
-    pollMetrics().then(() => {
-        addLog('✅ Dashboard listo. Ingresa la IP del ESP32 para comenzar.', 'success');
-        addLog('💡 Atajos: <strong>Ctrl+Enter</strong> = Ataque | <strong>Ctrl+D</strong> = Defensa', 'info');
-    });
-
-    // Polling periódico
-    pollTimer = setInterval(pollMetrics, POLL_INTERVAL_MS);
-}
-
-// Arrancar cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', init);
+  // ---- Init ----
+  reset();
+  detectBackend();
+})();
