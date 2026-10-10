@@ -59,6 +59,73 @@
     try { localStorage.setItem("sg-tema", nuevo); } catch (e) { /* almacenamiento bloqueado */ }
   });
 
+  /* ---------- Sonido de alerta (semaforo en rojo) ---------- */
+  // El navegador solo deja sonar audio despues de un clic: el boton de la
+  // bocina activa el sonido y la preferencia se recuerda en este equipo.
+  let audio = null;
+  let sonidoOn = false;
+  try { sonidoOn = localStorage.getItem("sg-sonido") === "1"; } catch (e) { /* almacenamiento bloqueado */ }
+  let enRojo = false, ultimoPitido = 0;
+  const REPETIR_MS = 8000;   // mientras siga en rojo, la alarma se repite
+
+  function pintarBotonSonido() {
+    const b = $("btnSonido");
+    b.setAttribute("aria-pressed", String(sonidoOn));
+    const txt = sonidoOn ? "Silenciar alerta sonora" : "Activar sonido de alerta";
+    b.setAttribute("aria-label", txt);
+    b.title = txt;
+    b.querySelector("use").setAttribute("href", sonidoOn ? "#i-vol" : "#i-vol-off");
+  }
+
+  function alarma() {
+    if (!sonidoOn) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === "suspended") audio.resume();
+      const t0 = audio.currentTime + 0.02;
+      // tres pitidos dobles, agudo-grave, como una sirena corta
+      for (let k = 0; k < 3; k++) {
+        [[988, 0], [740, 0.16]].forEach(([f, dt]) => {
+          const o = audio.createOscillator(), g = audio.createGain();
+          const t = t0 + k * 0.42 + dt;
+          o.type = "square";
+          o.frequency.value = f;
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(0.18, t + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+          o.connect(g).connect(audio.destination);
+          o.start(t);
+          o.stop(t + 0.15);
+        });
+      }
+    } catch (e) { /* sin audio en este navegador */ }
+  }
+
+  function revisarAlarma(rojo) {
+    const ahora = Date.now();
+    if (rojo && (!enRojo || ahora - ultimoPitido >= REPETIR_MS)) {
+      if (!enRojo) toast("¡Semáforo en rojo! Revisa el aviso y actúa.");
+      alarma();
+      ultimoPitido = ahora;
+    }
+    enRojo = rojo;
+    $("btnSonido").toggleAttribute("data-sonando", rojo && sonidoOn);
+  }
+
+  $("btnSonido").addEventListener("click", () => {
+    sonidoOn = !sonidoOn;
+    try { localStorage.setItem("sg-sonido", sonidoOn ? "1" : "0"); } catch (e) { /* almacenamiento bloqueado */ }
+    pintarBotonSonido();
+    if (sonidoOn) { alarma(); toast("Sonido activado: sonará cuando el semáforo esté en rojo."); }
+    else toast("Alerta sonora silenciada.");
+    $("btnSonido").toggleAttribute("data-sonando", enRojo && sonidoOn);
+  });
+  pintarBotonSonido();
+  // si quedo activado de antes, el primer clic en la pagina desbloquea el audio
+  document.addEventListener("pointerdown", () => {
+    if (sonidoOn && !audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { /* sin audio */ } }
+  }, { once: true });
+
   /* ---------- Globo de las graficas ---------- */
   const tip = $("tip");
   function mostrarTip(ev, punto) {
@@ -121,6 +188,62 @@
     });
     return { def: g, chart, val: card.querySelector("[data-v]") };
   });
+
+  /* ---------- Temperatura de la placa (LM35) ---------- */
+  // mismos umbrales que el firmware: 25 precaucion temprana, 27 activa (rele), 29 critico
+  const TERMICO = {
+    OK: { estado: "verde", icono: "i-ok", txt: "Normal" },
+    PRECAUCION_TEMPRANA: { estado: "ambar", icono: "i-warn", txt: "Precaución temprana" },
+    PRECAUCION_ACTIVA: { estado: "ambar", icono: "i-warn", txt: "Precaución activa" },
+    CRITICO: { estado: "rojo", icono: "i-crit", txt: "Crítico" },
+  };
+  let serieTemp = [];
+  const horaSeg = (s) => { const d = iso(s); return `${hm(d)}:${pad(d.getUTCSeconds())}`; };
+  const graficaTemp = SG.line($("tempChart"), {
+    titulo: "Temperatura", maxMin: 35, height: 150,
+    umbrales: [{ v: 29 }, { v: 27, suave: true }, { v: 25, suave: true }],
+    ticksX: (desde, hasta) => [0, 1, 2, 3, 4].map((k) => Math.round(desde + (k * (hasta - desde)) / 4))
+      .filter((i, k, a) => a.indexOf(i) === k && serieTemp[i]).map((i) => ({ i, label: horaSeg(serieTemp[i].ts) })),
+    onHover: (i, ev) => {
+      graficaTemp.hover(i);
+      const p = i == null ? null : serieTemp[i];
+      if (!p) { tip.hidden = true; return; }
+      tip.replaceChildren();
+      const t = document.createElement("div");
+      t.className = "tip-time";
+      t.textContent = horaSeg(p.ts);
+      const row = document.createElement("div");
+      row.className = "tip-row";
+      row.innerHTML = `<span class="tip-key"></span><span class="tip-val">${esc(dec(p.temperatura, 1))} °C</span><span class="tip-lab">${esc((TERMICO[p.estado] || TERMICO.OK).txt)}</span>`;
+      tip.append(t, row);
+      tip.hidden = false;
+      tip.style.left = Math.min(ev.clientX + 14, innerWidth - tip.offsetWidth - 8) + "px";
+      tip.style.top = Math.min(ev.clientY + 14, innerHeight - tip.offsetHeight - 8) + "px";
+    },
+  });
+
+  function pintarTemperatura(t) {
+    t = t || {};
+    serieTemp = t.serie || [];
+    const hay = t.temperatura != null;
+    const s = TERMICO[t.estado] || TERMICO.OK;
+    $("tempVal").textContent = hay ? dec(t.temperatura, 1) : "—";
+    $("tempSub").textContent = t.conectada ? "Sensor LM35 de la NodeMCU · en tiempo real"
+      : hay ? "Placa sin conexión: última lectura recibida" : "Esperando la primera lectura de la NodeMCU";
+    document.querySelector(".temp-card").toggleAttribute("data-sin-datos", !t.conectada);
+    const badge = $("tempBadge");
+    badge.dataset.estado = hay ? s.estado : "verde";
+    badge.innerHTML = ico(hay ? s.icono : "i-info") + `<span>${hay ? s.txt : "Sin lectura"}</span>`;
+    const temps = serieTemp.map((p) => p.temperatura);
+    const filas = [
+      ["Ventilación (relé)", t.rele == null ? "—" : t.rele ? "ENCENDIDA" : "apagada"],
+      ["Mín · máx", temps.length ? `${dec(Math.min(...temps), 1)} · ${dec(Math.max(...temps), 1)} °C` : "—"],
+      ["Última lectura", t.ts ? horaSeg(t.ts) : "—"],
+    ];
+    $("tempDatos").innerHTML = filas.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
+    graficaTemp.draw({ serie: temps, desde: 0, hasta: Math.max(1, temps.length - 1),
+      tiempo: (i) => iso(serieTemp[i] ? serieTemp[i].ts : "2026-01-01T00:00:00") });
+  }
 
   /* ---------- Pintado ---------- */
   const ESTADOS = {
@@ -203,6 +326,10 @@
       g.val.textContent = ult == null ? "—" : dec(ult, g.def.k === "ram" ? 1 : 0);
     });
 
+    pintarTemperatura(d.termico);
+    // rojo del semaforo del servidor, o temperatura critica (LED rojo de la placa)
+    const termicoCritico = !!(d.termico && d.termico.conectada && d.termico.estado === "CRITICO");
+    revisarAlarma((hayDatos && d.estado === "rojo") || termicoCritico);
     pintarAvisos(d);
     const regs = d.registros || [];
     $("registros").innerHTML = regs.length ? regs.map((r) => `

@@ -76,7 +76,8 @@ verificación contra la solución del kit ("avisamos N min antes del pico") y lo
 4. Sube el firmware y abre el Monitor Serie a 115200.
 
 La placa manda su telemetría real cada 2 s (`POST /api/nodemcu/telemetria`) y enciende el LED que le
-indica el servidor. Mientras la NodeMCU está conectada, el tablero muestra su estado en lugar de la repetición.
+indica el servidor. En cada envío también va la temperatura del sensor **LM35 (A0)**, que el tablero muestra
+en tiempo real en la tarjeta *Temperatura del equipo*. Mientras la NodeMCU está conectada, el tablero muestra su estado en lugar de la repetición.
 
 **Demo de falla real:** pulsa el botón **FLASH** de la placa. La NodeMCU empieza a reservar 1 KB de memoria
 por ciclo (fuga real, con un tope seguro). Su RAM se reporta en la escala de app-01 (sana ~55 %). En ~1 min
@@ -94,7 +95,8 @@ puede ser de madrugada), se activa con `POST /api/nodemcu/reiniciar?respetar_con
 | POST | `/api/repeticion/iniciar` | `{corrida, velocidad}` reproduce una corrida del kit |
 | POST | `/api/repeticion/detener` | Detiene la repetición |
 | GET  | `/api/estado?fuente=` | Estado: riesgo, semáforo, qué pasa, avisos, registros, serie |
-| POST | `/api/nodemcu/telemetria` | La placa manda `{cpu, ram, disco, latencia_ms, errores}`; responde el semáforo |
+| POST | `/api/nodemcu/telemetria` | La placa manda `{cpu, ram, disco, latencia_ms, errores, temperatura, estado_termico, rele}`; responde el semáforo |
+| GET  | `/api/nodemcu/temperatura` | Temperatura del LM35 de la placa: última lectura e historial |
 | GET  | `/api/nodemcu/semaforo` | Semáforo de la fuente activa |
 | POST | `/api/nodemcu/reiniciar` | Reinicia el monitor en vivo de la placa |
 | GET/POST | `/api/aviso/estado`, `/api/aviso/probar` | Estado y prueba del aviso por Telegram |

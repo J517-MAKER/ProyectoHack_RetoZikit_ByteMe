@@ -33,40 +33,41 @@
  * ======================================================
  */
 
-#include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
-#include <WiFiClient.h>
 #include <ArduinoJson.h>
+#include <ESP8266HTTPClient.h>
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
 
 // =============================================================
 //  CONFIGURACION - Modifica antes de compilar
 // =============================================================
-const char* WIFI_SSID     = "TU_RED_WIFI";
-const char* WIFI_PASSWORD = "TU_CONTRASENA";
+const char *WIFI_SSID = "ByteMe";
+const char *WIFI_PASSWORD = "Maricruz";
 // IP de la computadora donde corre dashboard_nodemcu/servidor/server.py
-const char* SERVIDOR      = "http://192.168.1.100:9091";
-const char* PLACA_ID      = "nodemcu-01";
+const char *SERVIDOR = "http://10.82.90.113:9091";
+const char *PLACA_ID = "nodemcu-01";
 
-const unsigned long PERIODO_MS = 2000;   // cada envio = 1 "minuto" del detector
+const unsigned long PERIODO_MS = 2000; // cada envio = 1 "minuto" del detector
 
 // =============================================================
 //  PINES
 // =============================================================
-const int LED_VERDE = D0;   // LED verde -> D0
-const int LED_AMBAR = D1;   // LED ambar -> D1
-const int LED_ROJO  = D2;   // LED rojo  -> D2
-const int ZUMBADOR  = -1;  // sin zumbador en esta config
-const int BOTON     = D3;   // boton FLASH
+const int LED_VERDE = D0; // LED verde -> D0
+const int LED_AMBAR = D1; // LED ambar -> D1
+const int LED_ROJO = D2;  // LED rojo  -> D2
+const int ZUMBADOR = -1;  // sin zumbador en esta config
+const int BOTON = D3;     // boton FLASH
 
 // =============================================================
 //  FUGA DE MEMORIA DE DEMO (memoria real reservada)
 // =============================================================
-const int    BLOQUE_BYTES   = 1024;
-const int    MAX_BLOQUES    = 24;      // tope seguro: ~24 KB
-const uint32_t HEAP_MINIMO  = 9000;    // nunca bajar de aqui (WiFi necesita memoria)
-void*  bloques[MAX_BLOQUES];
-int    nBloques = 0;
-bool   fugaActiva = false;
+const int BLOQUE_BYTES = 1024;
+const int MAX_BLOQUES = 24; // tope seguro: ~24 KB
+const uint32_t HEAP_MINIMO =
+    9000; // nunca bajar de aqui (WiFi necesita memoria)
+void *bloques[MAX_BLOQUES];
+int nBloques = 0;
+bool fugaActiva = false;
 
 uint32_t heapInicial = 0;
 unsigned long ultimoEnvio = 0;
@@ -74,10 +75,10 @@ unsigned long trabajoLazoUs = 0;
 int erroresCiclo = 0;
 float ultimaLatencia = 0;
 
-void leds(const char* estado) {
+void leds(const char *estado) {
   digitalWrite(LED_VERDE, strcmp(estado, "verde") == 0);
   digitalWrite(LED_AMBAR, strcmp(estado, "ambar") == 0);
-  digitalWrite(LED_ROJO,  strcmp(estado, "rojo")  == 0);
+  digitalWrite(LED_ROJO, strcmp(estado, "rojo") == 0);
 }
 
 void pitar(int veces) {
@@ -85,17 +86,20 @@ void pitar(int veces) {
 }
 
 void avanzarFuga() {
-  if (fugaActiva && nBloques < MAX_BLOQUES && ESP.getFreeHeap() > HEAP_MINIMO + BLOQUE_BYTES) {
+  if (fugaActiva && nBloques < MAX_BLOQUES &&
+      ESP.getFreeHeap() > HEAP_MINIMO + BLOQUE_BYTES) {
     bloques[nBloques] = malloc(BLOQUE_BYTES);
     if (bloques[nBloques]) {
-      memset(bloques[nBloques], 0xA5, BLOQUE_BYTES);  // que la memoria se use de verdad
+      memset(bloques[nBloques], 0xA5,
+             BLOQUE_BYTES); // que la memoria se use de verdad
       nBloques++;
     }
   }
 }
 
 void liberarFuga() {
-  for (int i = 0; i < nBloques; i++) free(bloques[i]);
+  for (int i = 0; i < nBloques; i++)
+    free(bloques[i]);
   nBloques = 0;
 }
 
@@ -114,21 +118,28 @@ void revisarBoton() {
   bool ahora = digitalRead(BOTON);
   if (antes == HIGH && ahora == LOW) {
     fugaActiva = !fugaActiva;
-    if (!fugaActiva) liberarFuga();
-    Serial.printf("[demo] Fuga de memoria %s\n", fugaActiva ? "ACTIVADA" : "liberada");
+    if (!fugaActiva)
+      liberarFuga();
+    Serial.printf("[demo] Fuga de memoria %s\n",
+                  fugaActiva ? "ACTIVADA" : "liberada");
   }
   antes = ahora;
 }
 
 void enviarTelemetria() {
-  if (WiFi.status() != WL_CONNECTED) { erroresCiclo++; leds("ambar"); return; }
+  if (WiFi.status() != WL_CONNECTED) {
+    erroresCiclo++;
+    leds("ambar");
+    return;
+  }
 
   JsonDocument doc;
   doc["placa"] = PLACA_ID;
   doc["ip"] = WiFi.localIP().toString();
   doc["cpu"] = min(100.0f, trabajoLazoUs / (PERIODO_MS * 10.0f));
   doc["ram"] = ramEscalada();
-  doc["disco"] = 100.0f * ESP.getSketchSize() / (ESP.getSketchSize() + ESP.getFreeSketchSpace());
+  doc["disco"] = 100.0f * ESP.getSketchSize() /
+                 (ESP.getSketchSize() + ESP.getFreeSketchSpace());
   doc["latencia_ms"] = ultimaLatencia;
   doc["errores"] = erroresCiclo;
   doc["heap_libre"] = ESP.getFreeHeap();
@@ -149,9 +160,10 @@ void enviarTelemetria() {
     erroresCiclo = 0;
     JsonDocument resp;
     if (!deserializeJson(resp, http.getString())) {
-      const char* estado = resp["estado"] | "verde";
+      const char *estado = resp["estado"] | "verde";
       leds(estado);
-      if (resp["aviso"] | false) pitar(3);
+      if (resp["aviso"] | false)
+        pitar(3);
       Serial.printf("[gramo] riesgo %d -> %s | RAM %.0f%% | lat %.0f ms\n",
                     resp["riesgo"] | 0, estado, ramEscalada(), ultimaLatencia);
     }
@@ -164,16 +176,19 @@ void enviarTelemetria() {
 
 void setup() {
   Serial.begin(115200);
-  pinMode(LED_VERDE, OUTPUT);  // D0
-  pinMode(LED_AMBAR, OUTPUT);  // D1
-  pinMode(LED_ROJO,  OUTPUT);  // D2
+  pinMode(LED_VERDE, OUTPUT); // D0
+  pinMode(LED_AMBAR, OUTPUT); // D1
+  pinMode(LED_ROJO, OUTPUT);  // D2
   pinMode(BOTON, INPUT_PULLUP);
   leds("ambar");
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("\nConectando a WiFi");
-  while (WiFi.status() != WL_CONNECTED) { delay(400); Serial.print("."); }
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(400);
+    Serial.print(".");
+  }
   Serial.printf("\nConectado. IP: %s\n", WiFi.localIP().toString().c_str());
   Serial.printf("Servidor: %s\n", SERVIDOR);
 
@@ -182,15 +197,57 @@ void setup() {
 }
 
 void loop() {
-  unsigned long t0 = micros();
-  revisarBoton();
-  trabajoLazoUs += micros() - t0;
+  // 1. Tomar múltiples lecturas rápidas y promediarlas para eliminar el ruido
+  float sumaTemp = 0;
+  int muestras = 15; // Número de muestras para suavizar la lectura
 
-  if (millis() - ultimoEnvio >= PERIODO_MS) {
-    ultimoEnvio = millis();
-    avanzarFuga();
-    enviarTelemetria();
-    trabajoLazoUs = 0;
+  for (int i = 0; i < muestras; i++) {
+    int sensorVal = analogRead(tempPin);
+    float voltage = (sensorVal * 3.3) / 1024.0;
+    sumaTemp += (voltage * 100.0);
+    delay(5); // Pequeña pausa de 5ms entre cada lectura
   }
-  delay(10);
+
+  float tempC = sumaTemp / muestras; // Temperatura suavizada y estable
+
+  // 2. Transmisión Serial / JSON
+  Serial.print("{\"temperatura\": ");
+  Serial.print(tempC, 1);
+  Serial.print(", \"estado\": ");
+
+  // 3. Lógica de estados con la temperatura ya filtrada
+  if (tempC < 25.0) {
+    // 🟢 ESTADO NORMAL    estadoSemaforo(HIGH, LOW, LOW);
+    digitalWrite(pinRelay, HIGH);
+    digitalWrite(pinBuzzer, LOW);
+    Serial.println(
+        "\"OK\", \"incidente\": \"NINGUNO\", \"accion\": \"Ninguna\"}");
+
+  } else if (tempC >= 25.0 && tempC < 27.0) {
+    // 🟡 PRECAUCIÓN
+    estadoSemaforo(LOW, HIGH, LOW);
+    digitalWrite(pinRelay, HIGH);
+    digitalWrite(pinBuzzer, LOW);
+    Serial.println("\"PRECAUCION\", \"incidente\": \"SATURACION_CHECKOUT\", "
+                   "\"accion\": \"Monitoreo\"}");
+
+  }
+
+  else if (tempC >= 27.0 && tempC < 29.0) {
+    // 🟡 PRECAUCIÓN
+    estadoSemaforo(LOW, HIGH, LOW);
+    digitalWrite(pinRelay, LOW);
+    Serial.println("\"PRECAUCION\", \"incidente\": \"SATURACION_CHECKOUT\", "
+                   "\"accion\": \"Mitigacion preventiva\"}");
+
+  } else {
+    // 🔴 CRÍTICO
+    estadoSemaforo(LOW, LOW, HIGH);
+    digitalWrite(pinRelay, LOW);
+    digitalWrite(pinBuzzer, HIGH);
+    Serial.println("\"CRITICO\", \"incidente\": \"FALLA_TERMICA_SRV\", "
+                   "\"accion\": \"RECUPERACION_ACTIVA\"}");
+  }
+
+  delay(1000); // Pausa de 1 segundo entre ciclos
 }

@@ -25,6 +25,7 @@
 
 import asyncio
 import sys
+from collections import deque
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
@@ -147,6 +148,8 @@ class EnVivo:
     """
 
     def __init__(self):
+        # historial del sensor termico (LM35); no se borra al reiniciar el monitor
+        self.termico: deque = deque(maxlen=150)
         self.reiniciar()
 
     def reiniciar(self, respetar_contexto: bool = False):
@@ -161,6 +164,9 @@ class EnVivo:
         self.placa = {"id": t.placa, "ip": t.ip, "heap_libre": t.heap_libre}
         fila = {"ts": self.ultimo_envio.replace(microsecond=0), "cpu": t.cpu, "ram": t.ram,
                 "disco": t.disco, "latencia": t.latencia_ms, "errores": t.errores}
+        if t.temperatura is not None:
+            self.termico.append({"ts": fila["ts"].isoformat(), "temperatura": round(t.temperatura, 1),
+                                 "estado": t.estado_termico or "OK", "rele": bool(t.rele)})
         aviso = self.monitor.procesar(fila)
         if aviso:
             await avisar(aviso, f"NodeMCU {t.placa}")
@@ -172,6 +178,13 @@ class EnVivo:
     def to_dict(self) -> dict:
         return {"fuente": "nodemcu", "conectada": self.conectada(), "placa": self.placa,
                 **self.monitor.to_dict()}
+
+    def termico_dict(self) -> dict:
+        """Temperatura en vivo de la placa: ultima lectura e historial."""
+        ultima = self.termico[-1] if self.termico else {}
+        return {"conectada": self.conectada(), "temperatura": ultima.get("temperatura"),
+                "estado": ultima.get("estado"), "rele": ultima.get("rele"), "ts": ultima.get("ts"),
+                "serie": list(self.termico)}
 
 
 repeticion = Repeticion()
@@ -213,6 +226,9 @@ class Telemetria(BaseModel):
     latencia_ms: float | None = Field(default=None, ge=0)
     errores: float | None = Field(default=None, ge=0)
     heap_libre: int | None = None
+    temperatura: float | None = Field(default=None, ge=-40, le=150)
+    estado_termico: str | None = None
+    rele: bool | None = None
 
 
 @app.get("/api/gramo/contexto")
@@ -248,6 +264,7 @@ async def estado(fuente: str = Query(default="")):
     data = en_vivo.to_dict() if f == "nodemcu" else repeticion.to_dict()
     data["aviso_configurado"] = notificaciones.esta_configurado()
     data["nodemcu_conectada"] = en_vivo.conectada()
+    data["termico"] = en_vivo.termico_dict()
     return data
 
 
@@ -271,6 +288,12 @@ async def nodemcu_semaforo():
         return {"estado": "verde", "riesgo": 0, "fuente": "ninguna"}
     return {"estado": data.estado(), "riesgo": round(data.riesgo), "fuente": fuente_activa(),
             "avisos": len(data.avisos)}
+
+
+@app.get("/api/nodemcu/temperatura")
+async def nodemcu_temperatura():
+    """Temperatura del sensor LM35 de la placa (ultima lectura e historial)."""
+    return en_vivo.termico_dict()
 
 
 @app.post("/api/nodemcu/reiniciar")

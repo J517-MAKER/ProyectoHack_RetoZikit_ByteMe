@@ -89,3 +89,14 @@ def test_nodemcu_fuga_de_memoria_pone_el_semaforo_en_rojo():
 def test_telemetria_invalida_se_rechaza():
     c = TestClient(server.app)
     assert c.post("/api/nodemcu/telemetria", json={"ram": 150}).status_code == 422
+
+
+def test_temperatura_en_vivo():
+    c = TestClient(server.app)
+    for temp, estado in [(24.0, "OK"), (28.3, "PRECAUCION_ACTIVA")]:
+        c.post("/api/nodemcu/telemetria", json={"placa": "test", "ram": 56, "temperatura": temp,
+                                               "estado_termico": estado, "rele": temp >= 27})
+    t = c.get("/api/estado").json()["termico"]
+    assert t["conectada"] and t["temperatura"] == 28.3
+    assert t["estado"] == "PRECAUCION_ACTIVA" and t["rele"] is True
+    assert c.get("/api/nodemcu/temperatura").json()["serie"][-2]["temperatura"] == 24.0

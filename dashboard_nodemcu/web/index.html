@@ -40,6 +40,9 @@
       <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
       <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.86a10 10 0 0 1 14 0"/><path d="M8.5 16.43a5 5 0 0 1 7 0"/></symbol>
       <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></symbol>
+      <symbol id="i-vol" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.4 18.4a9 9 0 0 0 0-12.8"/></symbol>
+      <symbol id="i-vol-off" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></symbol>
+      <symbol id="i-temp" viewBox="0 0 24 24"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></symbol>
     </defs>
   </svg>
 
@@ -74,6 +77,9 @@
         <div class="top-right">
           <span class="live" id="livePill" data-modo="pausa"><span class="live-dot"></span><span id="liveTxt">Sin datos</span></span>
           <span class="clock" id="reloj">—</span>
+          <button class="icon-btn" id="btnSonido" aria-pressed="false" aria-label="Activar sonido de alerta" title="Activar sonido de alerta">
+            <svg><use href="#i-vol-off"/></svg>
+          </button>
           <button class="icon-btn" id="btnTema" aria-label="Cambiar tema claro u oscuro">
             <svg class="only-light"><use href="#i-moon"/></svg><svg class="only-dark"><use href="#i-sun"/></svg>
           </button>
@@ -142,6 +148,21 @@
               <button class="btn btn-sm" id="btnProbar"><svg><use href="#i-send"/></svg><span>Probar aviso</span></button>
             </div>
           </article>
+        </section>
+
+        <section class="card temp-card" aria-label="Temperatura en tiempo real">
+          <div class="card-h">
+            <div><div class="card-t">Temperatura del equipo</div><div class="card-s" id="tempSub">Sensor LM35 de la NodeMCU · en tiempo real</div></div>
+            <svg class="card-ico"><use href="#i-temp"/></svg>
+          </div>
+          <div class="card-b temp-b">
+            <div class="temp-info">
+              <div class="temp-val"><span id="tempVal">—</span><small>°C</small></div>
+              <span class="status" id="tempBadge" data-estado="verde"><svg><use href="#i-ok"/></svg><span>Sin lectura</span></span>
+              <dl class="placa" id="tempDatos"></dl>
+            </div>
+            <div class="chart temp-chart" id="tempChart"></div>
+          </div>
         </section>
 
         <section class="telemetry">
