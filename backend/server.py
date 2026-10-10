@@ -29,6 +29,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import notificaciones
+import replay
 
 
 # =============================================================
@@ -291,12 +292,14 @@ def _clamp(v, lo, hi):
 # =============================================================
 
 engine = RiskEngine()
+replay_engine = replay.ReplayEngine()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
     await engine.stop()
+    await replay_engine.stop()
 
 
 app = FastAPI(
@@ -429,6 +432,55 @@ async def equipo_estado(ip: str = Query(default="")):
     except Exception:
         pass
     return {"reachable": False, "ip": ip}
+
+
+# =============================================================
+#  ENDPOINTS - DATOS REALES (REPRODUCCION DEL DATASET ZIKIT)
+# =============================================================
+
+class ReplayConfig(BaseModel):
+    corrida: str = "corrida_01"
+    cliente: str = "gramo"
+
+
+@app.get("/api/dataset/corridas")
+async def listar_corridas(cliente: str = Query(default="gramo")):
+    """Lista las corridas disponibles del dataset (o de la muestra incluida)."""
+    from pathlib import Path as _P
+    base = _P(replay.ds.RUTA_DATASET) / "data" / "corridas"
+    es_completo = base.exists()
+    if not es_completo:
+        base = replay.ds.RUTA_MUESTRA
+    corridas = sorted(
+        p.name for p in base.iterdir()
+        if p.is_dir() and p.name.startswith("corrida")
+        and (p / cliente / "metricas.csv").exists()
+    ) if base.exists() else []
+    return {"cliente": cliente, "corridas": corridas,
+            "fuente": "completo" if es_completo else "muestra"}
+
+
+@app.post("/api/dataset/reproducir")
+async def reproducir(config: ReplayConfig):
+    """Reproduce una corrida real: el detector corre en vivo sobre los datos."""
+    try:
+        await replay_engine.start(config.corrida, config.cliente)
+        return {"status": "reproduciendo", **replay_engine.to_dict()}
+    except (ValueError, FileNotFoundError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/dataset/detener")
+async def detener_replay():
+    """Detiene la reproduccion en curso."""
+    await replay_engine.stop()
+    return {"status": "detenido", **replay_engine.to_dict()}
+
+
+@app.get("/api/dataset/estado")
+async def estado_replay():
+    """Estado actual de la reproduccion de datos reales."""
+    return replay_engine.to_dict()
 
 
 # =============================================================

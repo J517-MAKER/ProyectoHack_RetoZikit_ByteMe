@@ -21,30 +21,38 @@
 
   // ---- Escenarios (espejo del backend, para el modo sin servidor) ----
   const SCN = {
-    memory: { driver: "mem", base: 12, fail: 100, senal: "la memoria de la caja",
+    memory: {
+      driver: "mem", base: 12, fail: 100, senal: "la memoria de la caja",
       what: "La caja registradora está consumiendo cada vez más memoria. Si llega al límite, se reinicia y se pierde la venta en curso.",
       proj: "A este ritmo llegaría al límite en unos 45 segundos.",
       alertT: "Revisa la Caja 1",
       alertB: "La caja principal se está quedando sin memoria y podría reiniciarse pronto. Conviene actuar ahora, antes de que se caiga en plena venta.",
-      act: "Liberar memoria y reiniciar el programa de la caja (sin perder la venta actual)." },
-    disk: { driver: "mem", base: 20, fail: 100, senal: "el espacio del servidor",
+      act: "Liberar memoria y reiniciar el programa de la caja (sin perder la venta actual)."
+    },
+    disk: {
+      driver: "mem", base: 20, fail: 100, senal: "el espacio del servidor",
       what: "El servidor donde se guardan las ventas y facturas se está llenando. Sin espacio, deja de registrar operaciones.",
       proj: "A este ritmo se llenaría en unos 40 segundos.",
       alertT: "El servidor casi sin espacio",
       alertB: "El disco del servidor está por llenarse. Si se llena, dejará de guardar ventas y facturas. Conviene liberar espacio ahora.",
-      act: "Liberar espacio y archivar registros antiguos de forma automática." },
-    latency: { driver: "lat", base: 40, fail: 600, senal: "el tiempo de respuesta",
+      act: "Liberar espacio y archivar registros antiguos de forma automática."
+    },
+    latency: {
+      driver: "lat", base: 40, fail: 600, senal: "el tiempo de respuesta",
       what: "El sistema está respondiendo cada vez más lento. Los cobros empiezan a tardar y los clientes esperan.",
       proj: "En menos de 50 segundos sería demasiado lento para cobrar.",
       alertT: "El sistema va lento",
       alertB: "Los tiempos de respuesta están subiendo rápido. Antes de que sea inusable para cobrar, conviene revisarlo.",
-      act: "Liberar conexiones atascadas y ampliar el recurso del servidor." },
-    errors: { driver: "err", base: 0, fail: 50, senal: "la cantidad de errores",
+      act: "Liberar conexiones atascadas y ampliar el recurso del servidor."
+    },
+    errors: {
+      driver: "err", base: 0, fail: 50, senal: "la cantidad de errores",
       what: "Están empezando a fallar operaciones sueltas. Un fallo puede arrastrar a otros hasta detener el servicio.",
       proj: "Podría caerse por completo en unos 45 segundos.",
       alertT: "Fallos en aumento",
       alertB: "Están apareciendo errores cada vez más seguido. Si no se corta, el servicio puede caerse del todo.",
-      act: "Reiniciar el servicio afectado y aislar el fallo antes de que se extienda." },
+      act: "Reiniciar el servicio afectado y aislar el fallo antes de que se extienda."
+    },
   };
   const SPEED = { 1: { l: "Lenta", k: 0.55, api: "lenta" }, 2: { l: "Media", k: 1, api: "media" }, 3: { l: "Rápida", k: 1.7, api: "rapida" } };
   const SENS = { 1: { l: "Baja", v: 78, api: "baja" }, 2: { l: "Normal", v: 65, api: "normal" }, 3: { l: "Alta", v: 52, api: "alta" } };
@@ -137,8 +145,10 @@
     }
     // modo local
     const scn = SCN[key];
-    S = { mode: "local", scn, key, k: sp.k, thr: se.v, t: 0, hist: [], prev: 8, ewma: scn.base,
-          detectT: null, failT: null, alerted: false, done: false };
+    S = {
+      mode: "local", scn, key, k: sp.k, thr: se.v, t: 0, hist: [], prev: 8, ewma: scn.base,
+      detectT: null, failT: null, alerted: false, done: false
+    };
     timer = setInterval(tickLocal, 350);
   }
 
@@ -256,7 +266,7 @@
     $("pillTxt").textContent = "Vigilando"; $("pdot").style.background = "var(--ok)";
 
     if (S.mode === "backend") {
-      try { await fetch(API + "/api/simular/resolver", { method: "POST" }); } catch (e) {}
+      try { await fetch(API + "/api/simular/resolver", { method: "POST" }); } catch (e) { }
       return; // el poll seguira pintando la recuperacion
     }
     // recuperacion local
@@ -328,6 +338,144 @@
     }
     $("spark").innerHTML = el;
   }
+
+  // =====================================================
+  //  DATOS REALES — reproducir una corrida del dataset
+  // =====================================================
+  let replayTimer = null;
+
+  async function cargarCorridas() {
+    try {
+      const r = await fetch(API + "/api/dataset/corridas?cliente=gramo", { signal: AbortSignal.timeout(2000) });
+      const d = await r.json();
+      const sel = $("corridaSel");
+      sel.innerHTML = "";
+      (d.corridas || []).forEach((c) => {
+        const o = document.createElement("option");
+        o.value = c; o.textContent = c.replace("corrida_", "Semana ");
+        sel.appendChild(o);
+      });
+      $("replayNote").textContent = d.fuente === "muestra"
+        ? "Usando la muestra incluida (1 semana). Para las 10 semanas, define ZIKIT_DATASET."
+        : "Kit de datos completo cargado (" + (d.corridas || []).length + " semanas).";
+    } catch (e) {
+      $("corridaSel").innerHTML = "<option>requiere servidor</option>";
+      $("replayNote").textContent = "Necesitas el servidor corriendo (python server.py).";
+    }
+  }
+
+  async function iniciarReplay() {
+    const corrida = $("corridaSel").value;
+    if (!corrida || corrida === "requiere servidor") return;
+    reset();
+    $("replayBtn").disabled = true;
+    $("pillTxt").textContent = "Reproduciendo datos reales…";
+    $("clock").textContent = "—";
+    $("replayResult").hidden = true; $("replayDets").innerHTML = "";
+    try {
+      await fetch(API + "/api/dataset/reproducir", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ corrida, cliente: "gramo" }),
+      });
+      replayTimer = setInterval(pollReplay, 300);
+    } catch (e) {
+      $("replayNote").textContent = "No se pudo iniciar (¿servidor corriendo?).";
+      $("replayBtn").disabled = false;
+    }
+  }
+
+  async function detenerReplay() {
+    clearInterval(replayTimer); replayTimer = null;
+    try { await fetch(API + "/api/dataset/detener", { method: "POST" }); } catch (e) { }
+    $("replayBtn").disabled = false;
+    $("pillTxt").textContent = "Vigilando";
+  }
+
+  async function pollReplay() {
+    try {
+      const r = await fetch(API + "/api/dataset/estado");
+      const d = await r.json();
+      aplicarReplay(d);
+      if (!d.is_running) {
+        clearInterval(replayTimer); replayTimer = null;
+        $("replayBtn").disabled = false;
+        $("pillTxt").textContent = "Vigilando";
+      }
+    } catch (e) {
+      clearInterval(replayTimer); replayTimer = null;
+      $("replayBtn").disabled = false;
+    }
+  }
+
+  function aplicarReplay(d) {
+    paintHealth(d.salud, d.estado);
+    if (d.ts) {
+      const t = new Date(d.ts);
+      const dias = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+      $("clock").textContent = dias[t.getDay()] + " " +
+        String(t.getHours()).padStart(2, "0") + ":" + String(t.getMinutes()).padStart(2, "0");
+    }
+    drawSpark(d.history || [], 65);
+
+    if (d.estado === "ok") {
+      setWhy("Telemetría real en rango normal.");
+      $("headline").textContent = "Vigilando datos reales";
+      $("subline").textContent = "Reproduciendo la semana de gramo. El detector ignora los picos normales del negocio.";
+      setBadge("ok", "Saludable");
+    } else if (d.estado === "warn") {
+      setWhy("Una señal real empezó a subir de forma sostenida.");
+      setBadge("warn", "Atención");
+    }
+
+    if (d.alertado) {
+      setBadge("crit", "Riesgo");
+      $("headline").textContent = "Falla real detectada a tiempo";
+      $("subline").textContent = "El detector avisó antes de que la falla llegara al pico.";
+      setWhy(d.descripcion || "Señal sostenida de falla real.");
+      $("whatText").textContent = d.descripcion; $("whatText").className = "whatline";
+      $("actionText").textContent = d.accion_sugerida; $("actionText").className = "action-main";
+      $("pdot").style.background = "var(--crit)"; $("pillTxt").textContent = "Aviso enviado";
+      // ultima deteccion en la burbuja
+      const ult = d.detecciones[d.detecciones.length - 1];
+      if (ult) {
+        const antic = ult.anticipacion_min != null ? ("+" + ult.anticipacion_min + " min de anticipación") : "en vivo";
+        $("notifBody").innerHTML =
+          '<div class="bubble"><div class="bt">⚠ ' + (d.descripcion ? d.descripcion.split(".")[0] : "Falla detectada") +
+          '</div><div class="bb">' + (d.accion_sugerida || "") +
+          '</div><div class="bm">SecureGuard · ' + antic +
+          (d.aviso_configurado ? (d.aviso_enviado ? " · ✓ enviado a tu celular" : " · aviso no enviado") : "") +
+          '</div></div>';
+      }
+    }
+
+    // resumen de detecciones
+    if (d.detecciones && d.detecciones.length) {
+      $("replayResult").hidden = false;
+      $("replayDets").innerHTML = d.detecciones.map((x) => {
+        const antic = x.anticipacion_min != null ? (x.anticipacion_min + " min antes") : "—";
+        const hora = new Date(x.inicio);
+        const dias = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+        return '<div class="rb-action"><span>' + dias[hora.getDay()] + " " +
+          String(hora.getHours()).padStart(2, "0") + ":" + String(hora.getMinutes()).padStart(2, "0") +
+          " · " + x.senal + '</span><span class="rb-done">' + antic + "</span></div>";
+      }).join("");
+      const prom = d.resultado && d.resultado.anticipacion_prom;
+      if (prom != null) {
+        $("ocDetect").textContent = d.detecciones.length;
+        $("ocFail").textContent = "0";
+        $("ocWin").textContent = prom + " min";
+        document.querySelectorAll(".oc .l")[0].textContent = "Fallas reales detectadas";
+        document.querySelectorAll(".oc .l")[1].textContent = "Falsas alarmas";
+        document.querySelectorAll(".oc .l")[2].textContent = "Anticipación promedio";
+      }
+    }
+  }
+
+  $("replayBtn").addEventListener("click", iniciarReplay);
+  $("replayStop").addEventListener("click", detenerReplay);
+  $("datasetPanel").addEventListener("toggle", function () {
+    if (this.open && $("corridaSel").children.length <= 1) cargarCorridas();
+  });
 
   // ---- Init ----
   reset();
