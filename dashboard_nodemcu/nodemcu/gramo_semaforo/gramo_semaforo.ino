@@ -24,12 +24,10 @@
  *  sostenida alta y avisa antes de que la placa se quede sin memoria.
  *  Otra pulsacion libera la memoria.
  *
- *  Conexiones (resistencia de 220 ohm en cada LED):
- *    D5 (GPIO14) -> LED verde
- *    D6 (GPIO12) -> LED ambar
- *    D7 (GPIO13) -> LED rojo
- *    D8 (GPIO15) -> zumbador activo (opcional)
+ *  Conexiones:
+ *    D1 (GPIO5)  -> jumper con LED verde + ambar + rojo (los 3 al mismo pin)
  *    D3 (GPIO0)  -> boton FLASH de la placa (ya incluido)
+ *    (zumbador no conectado en esta configuracion)
  *
  *  Bibliotecas: core ESP8266 para Arduino, ArduinoJson v7+
  * ======================================================
@@ -54,10 +52,10 @@ const unsigned long PERIODO_MS = 2000;   // cada envio = 1 "minuto" del detector
 // =============================================================
 //  PINES
 // =============================================================
-const int LED_VERDE = D5;
-const int LED_AMBAR = D6;
-const int LED_ROJO  = D7;
-const int ZUMBADOR  = D8;
+const int LED_VERDE = D0;   // LED verde -> D0
+const int LED_AMBAR = D1;   // LED ambar -> D1
+const int LED_ROJO  = D2;   // LED rojo  -> D2
+const int ZUMBADOR  = -1;  // sin zumbador en esta config
 const int BOTON     = D3;   // boton FLASH
 
 // =============================================================
@@ -83,10 +81,7 @@ void leds(const char* estado) {
 }
 
 void pitar(int veces) {
-  for (int i = 0; i < veces; i++) {
-    digitalWrite(ZUMBADOR, HIGH); delay(120);
-    digitalWrite(ZUMBADOR, LOW);  delay(120);
-  }
+  (void)veces; // zumbador no conectado
 }
 
 void avanzarFuga() {
@@ -169,8 +164,9 @@ void enviarTelemetria() {
 
 void setup() {
   Serial.begin(115200);
-  pinMode(LED_VERDE, OUTPUT); pinMode(LED_AMBAR, OUTPUT); pinMode(LED_ROJO, OUTPUT);
-  pinMode(ZUMBADOR, OUTPUT);
+  pinMode(LED_VERDE, OUTPUT);  // D0
+  pinMode(LED_AMBAR, OUTPUT);  // D1
+  pinMode(LED_ROJO,  OUTPUT);  // D2
   pinMode(BOTON, INPUT_PULLUP);
   leds("ambar");
 
