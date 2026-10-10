@@ -220,7 +220,7 @@ class ReplayEngine:
         })
         # aviso real al responsable
         try:
-            res = await notificaciones.enviar_telegram(info["titulo"], info["desc"])
+            res = await notificaciones.enviar_telegram(info["titulo"], info["desc"], origen="datos reales")
             self.aviso_enviado = bool(res.get("enviado"))
             self.aviso_motivo = res.get("motivo", "")
         except Exception as e:

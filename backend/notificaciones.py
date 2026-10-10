@@ -15,8 +15,40 @@
 """
 
 import os
+import time
+from collections import deque
+from datetime import datetime
 
 import aiohttp
+
+# Historial en memoria de los avisos (el dashboard lo muestra).
+# Si luego se usa base de datos, basta con persistir aqui mismo.
+_HISTORIAL: deque = deque(maxlen=100)
+_SEQ = 0
+
+
+def _registrar(titulo: str, cuerpo: str, resultado: dict, origen: str) -> None:
+    global _SEQ
+    _SEQ += 1
+    _HISTORIAL.appendleft({
+        "id": _SEQ,
+        "ts": time.time(),
+        "hora": datetime.now().strftime("%H:%M:%S"),
+        "titulo": titulo,
+        "cuerpo": cuerpo,
+        "origen": origen,
+        "enviado": bool(resultado.get("enviado")),
+        "motivo": resultado.get("motivo"),
+    })
+
+
+def historial(limite: int = 30) -> list:
+    """Avisos mas recientes primero."""
+    return list(_HISTORIAL)[:limite]
+
+
+def limpiar_historial() -> None:
+    _HISTORIAL.clear()
 
 # Carga opcional de .env (si python-dotenv esta instalado).
 # Si no lo esta, igual se leen las variables del entorno del sistema.
@@ -33,7 +65,14 @@ def esta_configurado() -> bool:
     return bool(os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID"))
 
 
-async def enviar_telegram(titulo: str, cuerpo: str) -> dict:
+async def enviar_telegram(titulo: str, cuerpo: str, origen: str = "simulacion") -> dict:
+    """Envia y deja constancia en el historial."""
+    res = await _enviar(titulo, cuerpo)
+    _registrar(titulo, cuerpo, res, origen)
+    return res
+
+
+async def _enviar(titulo: str, cuerpo: str) -> dict:
     """
     Envia un mensaje al chat configurado. Devuelve un dict con el
     resultado. Nunca lanza: si falla, lo reporta en el dict para que

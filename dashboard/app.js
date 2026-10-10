@@ -467,6 +467,37 @@
     if (this.open && $("corridaSel").children.length <= 1) cargarCorridas();
   });
 
+  // ---- Historial de avisos (lo que realmente se mandó a Telegram) ----
+  let histSig = "";
+  function escHtml(t) {
+    return String(t == null ? "" : t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  }
+  async function pollAvisos() {
+    try {
+      const r = await fetch("/api/notificaciones?limite=30", { cache: "no-store" });
+      if (!r.ok) throw new Error();
+      const d = await r.json();
+      $("histSync").textContent = d.configurado ? "sincronizado con Telegram" : "Telegram sin configurar";
+      const sig = d.avisos.map((a) => a.id + ":" + a.enviado).join(",");
+      if (sig === histSig) return;
+      histSig = sig;
+      if (!d.avisos.length) {
+        $("histList").innerHTML = '<div class="notif-empty">Aún no se ha enviado ningún aviso.</div>';
+        return;
+      }
+      $("histList").innerHTML = d.avisos.map((a) =>
+        '<div class="hist-item"><div class="hist-time">' + escHtml(a.hora) + '</div>' +
+        '<div><div class="hist-t">' + escHtml(a.titulo) + '</div>' +
+        '<div class="hist-d">' + escHtml(a.cuerpo) + ' · <em>' + escHtml(a.origen) + '</em></div></div>' +
+        '<span class="hist-tag' + (a.enviado ? "" : " off") + '">' + (a.enviado ? "Enviado" : "No enviado") + '</span></div>'
+      ).join("");
+    } catch (e) {
+      $("histSync").textContent = "sin conexión al servidor";
+    }
+  }
+  pollAvisos();
+  setInterval(pollAvisos, 1500);
+
   // ---- Init ----
   reset();
   detectBackend();

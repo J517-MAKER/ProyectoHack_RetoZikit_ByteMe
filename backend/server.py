@@ -228,7 +228,7 @@ class RiskEngine:
         """Dispara el aviso al responsable (Telegram) al detectar el riesgo."""
         scn = self.scenario
         try:
-            res = await notificaciones.enviar_telegram(scn["nombre"], scn["descripcion"])
+            res = await notificaciones.enviar_telegram(scn["nombre"], scn["descripcion"], origen="simulacion")
             self.aviso_enviado = bool(res.get("enviado"))
             self.aviso_motivo = res.get("motivo", "")
             if self.aviso_enviado:
@@ -358,8 +358,24 @@ async def probar_aviso():
     res = await notificaciones.enviar_telegram(
         "Prueba de SecureGuard",
         "Si recibes este mensaje, los avisos al responsable estan funcionando.",
+        origen="prueba",
     )
     return res
+
+
+@app.get("/api/notificaciones")
+async def listar_notificaciones(limite: int = Query(30, ge=1, le=100)):
+    """Historial de avisos enviados al celular (mas recientes primero)."""
+    return {
+        "configurado": notificaciones.esta_configurado(),
+        "avisos": notificaciones.historial(limite),
+    }
+
+
+@app.delete("/api/notificaciones")
+async def limpiar_notificaciones():
+    notificaciones.limpiar_historial()
+    return {"ok": True}
 
 
 @app.post("/api/simular/iniciar")

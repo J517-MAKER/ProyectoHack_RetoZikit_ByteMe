@@ -164,3 +164,16 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 /* Responsive */
 @media (max-width: 620px) { .cols { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .outcome { grid-template-columns: 1fr; } }
+
+/* Historial de avisos (sincronizado con Telegram) */
+.hist { border-top: 1px solid var(--line); padding: 14px 20px 8px; }
+.hist-head { display: flex; justify-content: space-between; gap: 10px; font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-faint); font-weight: 650; margin-bottom: 8px; }
+.hist-sync { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.hist-item { display: grid; grid-template-columns: 62px 1fr auto; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); align-items: start; }
+.hist-item:first-child { border-top: 0; }
+.hist-time { font-size: .8rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; padding-top: 2px; }
+.hist-t { font-size: .9rem; font-weight: 600; color: var(--ink); }
+.hist-d { font-size: .83rem; color: var(--ink-soft, var(--ink-faint)); margin-top: 2px; }
+.hist-tag { font-size: .72rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: var(--ok-bg); color: var(--ok); }
+.hist-tag.off { background: var(--line); color: var(--ink-faint); }
+#histList { max-height: 260px; overflow-y: auto; }
