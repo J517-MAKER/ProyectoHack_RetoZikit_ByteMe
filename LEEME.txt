@@ -1,0 +1,33 @@
+﻿SecureGuard · gramo — Monitoreo predictivo
+Reto Zikit «Antes de que suene el teléfono» · Equipo ByteMe
+=====================================================================
+
+CÓMO ABRIRLO
+
+  Windows:      doble clic en INICIAR.bat
+  Mac / Linux:  abre una terminal en esta carpeta y escribe:  bash iniciar.sh
+
+La primera vez tarda de 1 a 3 minutos: prepara Python e instala lo
+necesario (hace falta internet). Después abre solo el tablero:
+
+  Tablero principal:  http://localhost:9090
+  Semáforo NodeMCU:   http://localhost:9091
+
+Para cerrarlo: Ctrl+C en la ventana negra, o simplemente ciérrala.
+
+
+SI ALGO PIDE PERMISO
+
+  - Windows puede decir que el archivo viene de internet: elige
+    «Ejecutar» (o «Más información» → «Ejecutar de todas formas»).
+  - Si el firewall de Windows pregunta, permite el acceso en redes
+    privadas (la placa NodeMCU / ESP32 se conecta por la red).
+  - Si no tienes Python 3.10, 3.11 o 3.12, el arranque ofrece instalar
+    «uv» (gratis) para traer Python 3.12 solo para este proyecto.
+    Responde S.
+
+
+SI ALGO FALLA
+
+  Los registros de los servidores quedan en la carpeta logs/.
+  Más detalles en README.md.

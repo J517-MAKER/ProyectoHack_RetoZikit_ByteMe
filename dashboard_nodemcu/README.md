@@ -42,7 +42,9 @@ dashboard_nodemcu/
 ```
 
 El servidor reutiliza el detector calibrado (`backend/detector/`) y el envío por Telegram
-(`backend/notificaciones.py`, que lee `backend/.env`), así que no hay que configurar nada dos veces.
+(`backend/notificaciones.py`, que lee `backend/.env`), así que no hay que configurar nada dos veces. El tablero
+también comparte el diseño del tablero principal: el servidor publica `dashboard/` en `/dashboard` y la página
+usa su `style.css` y `charts.js`.
 
 ## Cómo ejecutarlo
 

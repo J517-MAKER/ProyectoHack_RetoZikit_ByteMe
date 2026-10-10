@@ -294,6 +294,13 @@ async def aviso_probar():
         "Si recibes este mensaje, los avisos de gramo estan funcionando.")
 
 
+# Estilos y graficas compartidos con el tablero principal (dashboard/): la
+# pagina los pide como ../../dashboard/..., que tambien funciona abriendo el
+# archivo directo desde la carpeta del repo.
+dashboard_dir = gramo.RAIZ_REPO / "dashboard"
+if dashboard_dir.exists():
+    app.mount("/dashboard", StaticFiles(directory=str(dashboard_dir)), name="dashboard")
+
 web_dir = Path(__file__).resolve().parent.parent / "web"
 if web_dir.exists():
     app.mount("/", StaticFiles(directory=str(web_dir), html=True), name="web")

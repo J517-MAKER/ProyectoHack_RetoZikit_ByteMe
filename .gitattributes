@@ -1,0 +1,4 @@
+# Los lanzadores necesitan su fin de linea nativo para funcionar
+*.sh   text eol=lf
+*.bat  text eol=crlf
+*.ps1  text eol=crlf

@@ -3,113 +3,182 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="SecureGuard · gramo — Vigilancia preventiva de la distribuidora gramo con NodeMCU.">
-  <title>SecureGuard · gramo</title>
+  <meta name="description" content="SecureGuard · gramo — Semáforo NodeMCU de la distribuidora de alimentos.">
+  <title>SecureGuard · Semáforo NodeMCU</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111110'/%3E%3Cpath d='M16 6.5 9.5 9.2v5.4c0 4 2.7 7 6.5 8.4 3.8-1.4 6.5-4.4 6.5-8.4V9.2z' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linejoin='round'/%3E%3Cpath d='M12.4 15.2h1.8l1.1-2.3 1.6 4.4 1.1-2.1h1.6' fill='none' stroke='%23fff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
+  <!-- Mismo sistema de diseno que el tablero principal (dashboard/) -->
+  <link rel="stylesheet" href="../../dashboard/style.css">
   <link rel="stylesheet" href="style.css">
+  <script>
+    try { var t = localStorage.getItem("sg-tema"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
 </head>
 <body>
-  <div class="wrap">
-    <header class="app">
+  <svg class="sprite" aria-hidden="true">
+    <defs>
+      <symbol id="i-logo" viewBox="0 0 24 24"><path d="M12 2.6 4.6 5.6v6.1c0 4.6 3.1 8.1 7.4 9.7 4.3-1.6 7.4-5.1 7.4-9.7V5.6z"/><path d="M8 12.6h2.1l1.3-2.8 1.9 5.1 1.3-2.3H16"/></symbol>
+      <symbol id="i-cpu" viewBox="0 0 24 24"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></symbol>
+      <symbol id="i-activity" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-rewind" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+      <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+      <symbol id="i-warn" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+      <symbol id="i-crit" viewBox="0 0 24 24"><path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.31 2a2 2 0 0 1 1.42.59l4.68 4.68A2 2 0 0 1 22 8.69v6.62a2 2 0 0 1-.59 1.42l-4.68 4.68a2 2 0 0 1-1.42.59H8.69a2 2 0 0 1-1.42-.59l-4.68-4.68A2 2 0 0 1 2 15.31V8.69a2 2 0 0 1 .59-1.42l4.68-4.68A2 2 0 0 1 8.69 2z"/></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="M14.54 21.69a.5.5 0 0 0 .94-.03l6.5-19a.5.5 0 0 0-.64-.63l-19 6.5a.5.5 0 0 0-.02.93l7.93 3.18a2 2 0 0 1 1.11 1.11z"/><path d="m21.85 2.15-10.94 10.94"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+      <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.86a10 10 0 0 1 14 0"/><path d="M8.5 16.43a5 5 0 0 1 7 0"/></symbol>
+      <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="shell">
+    <aside class="sidebar" aria-label="Navegación">
       <div class="brand">
-        <div class="mark">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
-        </div>
-        <div>
-          <div class="name">SecureGuard · gramo</div>
-          <div class="tag">Distribuidora de alimentos · tablero NodeMCU</div>
-        </div>
+        <span class="brand-mark"><svg><use href="#i-logo"/></svg></span>
+        <span><span class="brand-name">SecureGuard</span><span class="brand-sub">Semáforo NodeMCU</span></span>
       </div>
-      <div class="hbtns">
-        <span class="pill"><span class="pdot" id="pdot"></span><span id="fuente">Sin datos</span></span>
-        <button class="ibtn" id="themeBtn" aria-label="Cambiar tema">◐</button>
+      <div class="tenant">
+        <span class="tenant-avatar" aria-hidden="true">g</span>
+        <span class="tenant-text"><span class="tenant-name">gramo</span><span class="tenant-sub">Distribuidora de alimentos</span></span>
       </div>
-    </header>
+      <nav class="nav">
+        <a href="#" class="nav-item" aria-current="page"><svg><use href="#i-cpu"/></svg><span>Tablero NodeMCU</span></a>
+        <a href="http://localhost:9090/" class="nav-item" id="lnkPrincipal"><svg><use href="#i-activity"/></svg><span>Monitor principal</span></a>
+      </nav>
+      <div class="side-foot">
+        <div class="side-row"><span class="dot" id="dotServidor"></span><span id="txtServidor">Conectando…</span></div>
+        <div class="side-row"><span class="dot" id="dotPlaca"></span><span id="txtPlaca">NodeMCU sin conexión</span></div>
+        <div class="side-row"><span class="dot" id="dotTelegram"></span><span id="txtTelegram">Telegram</span></div>
+        <div class="side-credit">Equipo ByteMe · Reto Zikit<br>«Antes de que suene el teléfono»</div>
+      </div>
+    </aside>
 
-    <!-- ESTADO GENERAL -->
-    <section class="hero">
-      <div class="eyebrow" id="reloj">Esperando telemetría</div>
-      <div class="status-ring">
-        <svg viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="10"/>
-          <circle id="ring" cx="60" cy="60" r="52" fill="none" stroke="var(--ok)" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0" style="transition:stroke-dashoffset .4s, stroke .4s"/>
-        </svg>
-        <div class="ring-label">
-          <div class="score" id="score">100</div>
-          <div class="of">salud de 100</div>
+    <div class="main">
+      <header class="topbar">
+        <div class="top-title">
+          <h1>Semáforo NodeMCU</h1>
+          <p>gramo · la placa del responsable enciende el LED que indica el servidor</p>
         </div>
-      </div>
-      <div class="headline" id="headline">Todo funcionando con normalidad</div>
-      <div class="subline" id="subline">Los pedidos, el inventario y el portal responden bien.</div>
-      <div class="badge" id="badge"><span class="bd"></span><span id="badgeTxt">Saludable</span></div>
-    </section>
+        <div class="top-right">
+          <span class="live" id="livePill" data-modo="pausa"><span class="live-dot"></span><span id="liveTxt">Sin datos</span></span>
+          <span class="clock" id="reloj">—</span>
+          <button class="icon-btn" id="btnTema" aria-label="Cambiar tema claro u oscuro">
+            <svg class="only-light"><use href="#i-moon"/></svg><svg class="only-dark"><use href="#i-sun"/></svg>
+          </button>
+        </div>
+      </header>
 
-    <!-- QUE PASA / QUE HACER -->
-    <div class="cols">
-      <div class="card">
-        <h3>Qué está pasando</h3>
-        <div id="whatText" class="muted">Sin novedades en los sistemas de gramo.</div>
-        <div class="note" id="ventana" hidden></div>
+      <div class="offline" id="offline" hidden>
+        <svg><use href="#i-info"/></svg>
+        <div><strong>Sin conexión con el servidor.</strong> En <code>dashboard_nodemcu/servidor/</code> ejecuta <code>python server.py</code> y recarga.</div>
       </div>
-      <div class="card">
-        <h3>Qué conviene hacer</h3>
-        <div id="doText" class="muted">Nada por ahora. Seguimos vigilando.</div>
-      </div>
+
+      <main class="content">
+        <!-- Controles: fuente de la telemetria -->
+        <section class="controls" aria-label="Repetición de una semana del kit">
+          <label class="field-inline"><span>Semana</span><select id="selCorrida"></select></label>
+          <label class="field-inline"><span>Velocidad</span>
+            <select id="selVelocidad">
+              <option value="lenta">10 min/s</option>
+              <option value="media" selected>1 h/s</option>
+              <option value="rapida">4 h/s</option>
+            </select>
+          </label>
+          <button class="btn btn-primary" id="btnIniciar"><svg><use href="#i-play"/></svg><span>Reproducir</span></button>
+          <button class="btn" id="btnDetener"><svg><use href="#i-stop"/></svg><span>Detener</span></button>
+          <div class="progress">
+            <div class="progress-txt"><span id="progTxt">—</span></div>
+            <div class="progress-bar"><i id="progBar"></i></div>
+          </div>
+        </section>
+
+        <section class="nm-row">
+          <article class="card status-card">
+            <div class="status-top">
+              <div class="gauge" id="gauge" role="img" aria-label="Índice de riesgo"></div>
+              <div class="status-text">
+                <span class="status" id="badge" data-estado="verde"><svg><use href="#i-ok"/></svg><span>Saludable</span></span>
+                <h2 class="headline" id="headline">Todo funcionando con normalidad</h2>
+                <p class="subline" id="subline">Los pedidos, el inventario y el portal responden bien.</p>
+                <div class="note" id="nota" hidden><svg><use href="#i-calendar"/></svg><span></span></div>
+              </div>
+            </div>
+            <div class="todo" id="queHacer" data-estado="verde">
+              <div class="todo-t"><svg><use href="#i-check"/></svg><span id="todoTitulo">Nada que hacer por ahora</span></div>
+              <p id="todoTexto">El detector solo avisa cuando una señal se sostiene.</p>
+            </div>
+          </article>
+
+          <article class="card semaforo-card">
+            <div class="card-h">
+              <div><div class="card-t">El semáforo de la placa</div><div class="card-s" id="semSub">Lo que muestran los LED de la NodeMCU</div></div>
+              <svg class="card-ico"><use href="#i-wifi"/></svg>
+            </div>
+            <div class="card-b semaforo-b">
+              <div class="semaforo" id="semaforo" role="img" aria-label="Semáforo">
+                <span class="luz" data-c="rojo"></span>
+                <span class="luz" data-c="ambar"></span>
+                <span class="luz" data-c="verde"></span>
+              </div>
+              <div class="semaforo-info">
+                <div class="sem-estado" id="semEstado">Verde · todo bien</div>
+                <dl class="placa" id="placa"></dl>
+              </div>
+            </div>
+            <div class="card-b semaforo-acc">
+              <button class="btn btn-sm" id="btnNodeReset"><svg><use href="#i-rewind"/></svg><span>Reiniciar monitor de la placa</span></button>
+              <button class="btn btn-sm" id="btnProbar"><svg><use href="#i-send"/></svg><span>Probar aviso</span></button>
+            </div>
+          </article>
+        </section>
+
+        <section class="telemetry">
+          <div class="section-h">
+            <div><h3>Señales recientes</h3><p id="senalesSub">Últimas 4 horas de la fuente activa</p></div>
+          </div>
+          <div class="charts charts-4" id="graficas"></div>
+        </section>
+
+        <section class="row-d">
+          <article class="card">
+            <div class="card-h">
+              <div><div class="card-t">Avisos enviados al responsable</div><div class="card-s" id="tgTxt">&nbsp;</div></div>
+              <svg class="card-ico"><use href="#i-bell"/></svg>
+            </div>
+            <div class="card-b alerts" id="avisos"></div>
+          </article>
+          <article class="card">
+            <div class="card-h">
+              <div><div class="card-t">Lo que dicen los registros</div><div class="card-s">Advertencias y errores de logs.md</div></div>
+            </div>
+            <div class="card-b logs" id="registros"></div>
+          </article>
+        </section>
+
+        <section class="card">
+          <div class="card-h"><div><div class="card-t">Lo que sabemos de gramo</div><div class="card-s" id="ctxSub">contexto.md del kit</div></div></div>
+          <div class="card-b" id="contexto"></div>
+        </section>
+      </main>
     </div>
-
-    <!-- SEÑALES -->
-    <section class="card">
-      <h3>Señales de app-01 <span class="muted small">(últimas 4 horas)</span></h3>
-      <div class="spark" data-campo="riesgo" data-titulo="Riesgo" data-unidad="" data-max="100" data-umbral="65"></div>
-      <div class="spark" data-campo="ram" data-titulo="Memoria (RAM)" data-unidad="%" data-max="100" data-umbral="82"></div>
-      <div class="spark" data-campo="latencia" data-titulo="Tiempo de respuesta" data-unidad=" ms" data-max="300" data-umbral="180"></div>
-      <div class="spark" data-campo="errores" data-titulo="Errores por minuto" data-unidad="" data-max="15" data-umbral="4"></div>
-      <div class="small muted">La línea punteada marca el nivel que, si se <b>sostiene</b> varios minutos, delata una falla. Un pico suelto es ruido normal.</div>
-    </section>
-
-    <!-- AVISOS -->
-    <section class="card">
-      <h3>Avisos enviados al responsable</h3>
-      <div id="avisos" class="muted">Todavía ningún aviso.</div>
-      <div class="small muted" id="telegram"></div>
-    </section>
-
-    <!-- REGISTROS -->
-    <section class="card">
-      <h3>Lo que dicen los registros</h3>
-      <div id="registros" class="muted">Sin advertencias recientes.</div>
-    </section>
-
-    <!-- CONTEXTO -->
-    <section class="card">
-      <h3>Lo que sabemos de gramo</h3>
-      <div id="contexto" class="muted">Cargando…</div>
-    </section>
-
-    <!-- CONTROL -->
-    <details class="card demo" open>
-      <summary>Modo demostración</summary>
-      <div class="ctl">
-        <label>Corrida del kit <select id="corrida"></select></label>
-        <label>Velocidad <select id="velocidad">
-          <option value="lenta">10 min/s</option>
-          <option value="media" selected>1 h/s</option>
-          <option value="rapida">4 h/s</option>
-        </select></label>
-        <button id="btnIniciar" class="primary">Reproducir</button>
-        <button id="btnDetener">Detener</button>
-      </div>
-      <div class="bar"><div id="progreso"></div></div>
-      <div class="ctl">
-        <span id="nodemcu" class="small muted">NodeMCU: sin conexión.</span>
-        <button id="btnNodeReset">Reiniciar NodeMCU</button>
-        <button id="btnProbar">Probar aviso Telegram</button>
-      </div>
-    </details>
   </div>
-  <div id="tip" class="tip" hidden></div>
+
+  <div class="tip" id="tip" role="tooltip" hidden></div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="../../dashboard/charts.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -28,6 +28,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+import gramo_api
 import notificaciones
 import replay
 
@@ -35,39 +36,40 @@ import replay
 # =============================================================
 #  ESCENARIOS DE FALLA
 # =============================================================
-# Cada escenario describe como se degrada una senal real de un
-# equipo de PyME. "base" es el valor sano, "fail" el valor al que
-# el equipo colapsa. El motor interpola entre ambos en el tiempo.
+# Cada escenario describe como se degrada una senal de los sistemas
+# de gramo (distribuidora de alimentos del kit Zikit). "base" es el
+# valor sano, "fail" el valor al que el sistema colapsa. El motor
+# interpola entre ambos en el tiempo.
 
 SCENARIOS = {
     "memory": {
-        "nombre": "Fuga de memoria en la caja",
+        "nombre": "Fuga de memoria en pedidos-worker",
         "driver": "mem", "unidad": "%", "base": 12, "fail": 100,
-        "descripcion": "La caja registradora consume cada vez mas memoria. "
-                       "Si llega al limite, se reinicia y se pierde la venta en curso.",
-        "accion": "Liberar memoria y reiniciar el programa de la caja "
-                  "(sin perder la venta actual).",
+        "descripcion": "La memoria de app-01 sube sin bajar. Si se agota, pedidos-worker "
+                       "se cae y se pierden los pedidos en curso de los restaurantes.",
+        "accion": "Reiniciar pedidos-worker de forma controlada (drenar la cola primero) "
+                  "y revisar el ultimo despliegue del worker.",
     },
     "disk": {
-        "nombre": "Disco del servidor lleno",
+        "nombre": "Disco de app-01 casi lleno",
         "driver": "mem", "unidad": "%", "base": 20, "fail": 100,
-        "descripcion": "El servidor donde se guardan ventas y facturas se esta llenando. "
-                       "Sin espacio, deja de registrar operaciones.",
-        "accion": "Liberar espacio y archivar registros antiguos de forma automatica.",
+        "descripcion": "El disco donde app-01 guarda pedidos y bitacoras se esta llenando. "
+                       "Sin espacio, la API deja de registrar pedidos.",
+        "accion": "Archivar bitacoras antiguas y liberar espacio antes del pico de pedidos.",
     },
     "latency": {
-        "nombre": "Sistema lento",
+        "nombre": "Inventario saturado",
         "driver": "lat", "unidad": "ms", "base": 40, "fail": 600,
-        "descripcion": "El sistema responde cada vez mas lento. Los cobros tardan "
-                       "y los clientes esperan.",
-        "accion": "Liberar conexiones atascadas y ampliar el recurso del servidor.",
+        "descripcion": "La API de pedidos tarda cada vez mas porque espera al servidor de "
+                       "inventario. Pronto los pedidos fallaran por tiempo de espera.",
+        "accion": "Liberar conexiones atascadas al inventario y ampliar el pool.",
     },
     "errors": {
-        "nombre": "Errores en cascada",
+        "nombre": "Errores en cascada en la API",
         "driver": "err", "unidad": "", "base": 0, "fail": 50,
-        "descripcion": "Empiezan a fallar operaciones sueltas. Un fallo puede arrastrar "
-                       "a otros hasta detener el servicio.",
-        "accion": "Reiniciar el servicio afectado y aislar el fallo antes de que se extienda.",
+        "descripcion": "Fallan operaciones de la API de pedidos; un fallo arrastra a otros "
+                       "hasta dejar sin servicio al portal de clientes.",
+        "accion": "Reiniciar el servicio afectado y aislar la dependencia que falla.",
     },
 }
 
@@ -297,9 +299,12 @@ replay_engine = replay.ReplayEngine()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Resultados sobre todas las semanas del kit, listos antes de abrir el tablero
+    gramo_api.evaluacion.iniciar()
     yield
     await engine.stop()
     await replay_engine.stop()
+    await gramo_api.repeticion.pausar()
 
 
 app = FastAPI(
@@ -316,6 +321,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Datos reales de gramo (kit Zikit): semana, repeticion, contexto y resultados
+app.include_router(gramo_api.router)
 
 
 # =============================================================

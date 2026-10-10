@@ -22,11 +22,17 @@ from datetime import datetime, time
 from pathlib import Path
 
 
+def _ruta_por_defecto() -> str:
+    """zikit-dataset dentro del proyecto (como viene en el .zip para compartir) o junto a el."""
+    raiz = Path(__file__).resolve().parent.parent.parent
+    for candidata in (raiz / "zikit-dataset", raiz.parent / "zikit-dataset"):
+        if candidata.exists():
+            return str(candidata)
+    return str(raiz.parent / "zikit-dataset")
+
+
 # Donde esta el dataset completo (clonado aparte). Si no existe, se usa la muestra.
-RUTA_DATASET = os.getenv(
-    "ZIKIT_DATASET",
-    str(Path(__file__).resolve().parent.parent.parent.parent / "zikit-dataset"),
-)
+RUTA_DATASET = os.getenv("ZIKIT_DATASET", _ruta_por_defecto())
 RUTA_MUESTRA = Path(__file__).resolve().parent.parent / "datos_muestra"
 
 

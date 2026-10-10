@@ -2,6 +2,12 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+.pytest_cache/
+
+# Kit de datos (se descarga o viene en el .zip), registros del arranque y paquetes armados
+zikit-dataset/
+logs/
+dist/
 
 # Credenciales de avisos (NUNCA subir)
 .env

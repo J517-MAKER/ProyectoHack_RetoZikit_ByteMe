@@ -3,187 +3,453 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="SecureGuard — Vigilancia preventiva de TI para PyMEs. Detecta fallas antes de que el cliente llame.">
-  <title>SecureGuard</title>
+  <meta name="description" content="SecureGuard · gramo — Monitoreo predictivo de la distribuidora de alimentos con los datos reales del kit Zikit.">
+  <title>SecureGuard · gramo</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111110'/%3E%3Cpath d='M16 6.5 9.5 9.2v5.4c0 4 2.7 7 6.5 8.4 3.8-1.4 6.5-4.4 6.5-8.4V9.2z' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linejoin='round'/%3E%3Cpath d='M12.4 15.2h1.8l1.1-2.3 1.6 4.4 1.1-2.1h1.6' fill='none' stroke='%23fff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;650;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script>
+    // Tema guardado antes de pintar, para que no parpadee
+    try { var t = localStorage.getItem("sg-tema"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
 </head>
 <body>
-  <div class="wrap">
-    <header class="app">
+  <!-- Iconos (trazo 2px, estilo Lucide) -->
+  <svg class="sprite" aria-hidden="true">
+    <defs>
+      <symbol id="i-logo" viewBox="0 0 24 24"><path d="M12 2.6 4.6 5.6v6.1c0 4.6 3.1 8.1 7.4 9.7 4.3-1.6 7.4-5.1 7.4-9.7V5.6z"/><path d="M8 12.6h2.1l1.3-2.8 1.9 5.1 1.3-2.3H16"/></symbol>
+      <symbol id="i-activity" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+      <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+      <symbol id="i-truck" viewBox="0 0 24 24"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></symbol>
+      <symbol id="i-flask" viewBox="0 0 24 24"><path d="M10 2v7.53a2 2 0 0 1-.21.9L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.07-10.13a2 2 0 0 1-.21-.89V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-rewind" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+      <symbol id="i-skip" viewBox="0 0 24 24"><path d="M5 4.5v15l10-7.5z"/><path d="M19 5v14"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+      <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+      <symbol id="i-warn" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+      <symbol id="i-crit" viewBox="0 0 24 24"><path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.31 2a2 2 0 0 1 1.42.59l4.68 4.68A2 2 0 0 1 22 8.69v6.62a2 2 0 0 1-.59 1.42l-4.68 4.68a2 2 0 0 1-1.42.59H8.69a2 2 0 0 1-1.42-.59l-4.68-4.68A2 2 0 0 1 2 15.31V8.69a2 2 0 0 1 .59-1.42l4.68-4.68A2 2 0 0 1 8.69 2z"/></symbol>
+      <symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01M6 18h.01"/></symbol>
+      <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+      <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></symbol>
+      <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2"/></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="M14.54 21.69a.5.5 0 0 0 .94-.03l6.5-19a.5.5 0 0 0-.64-.63l-19 6.5a.5.5 0 0 0-.02.93l7.93 3.18a2 2 0 0 1 1.11 1.11z"/><path d="m21.85 2.15-10.94 10.94"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+      <symbol id="i-table" viewBox="0 0 24 24"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
+      <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+      <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.86a10 10 0 0 1 14 0"/><path d="M8.5 16.43a5 5 0 0 1 7 0"/></symbol>
+      <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8M16 17H8M10 9H8"/></symbol>
+      <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="shell">
+    <!-- ===================== BARRA LATERAL ===================== -->
+    <aside class="sidebar" aria-label="Navegación">
       <div class="brand">
-        <div class="mark">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
-        </div>
-        <div>
-          <div class="name">SecureGuard</div>
-          <div class="tag">Vigilancia preventiva · Mi Negocio</div>
-        </div>
+        <span class="brand-mark"><svg><use href="#i-logo"/></svg></span>
+        <span>
+          <span class="brand-name">SecureGuard</span>
+          <span class="brand-sub">Monitoreo predictivo</span>
+        </span>
       </div>
-      <div class="hbtns">
-        <span class="pill"><span class="pdot" id="pdot"></span><span id="pillTxt">Vigilando</span></span>
-        <button class="ibtn" id="themeBtn" aria-label="Cambiar tema">◐</button>
-      </div>
-    </header>
 
-    <!-- ESTADO GENERAL -->
-    <section class="hero" id="hero">
-      <div class="eyebrow">Estado de tus sistemas</div>
-      <div class="status-ring">
-        <svg viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="10"/>
-          <circle id="ring" cx="60" cy="60" r="52" fill="none" stroke="var(--ok)" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="26" style="transition:stroke-dashoffset .5s, stroke .5s"/>
-        </svg>
-        <div class="ring-label">
-          <div class="score" id="score" style="color:var(--ok)">92</div>
-          <div class="of">de 100</div>
-        </div>
+      <div class="tenant">
+        <span class="tenant-avatar" aria-hidden="true">g</span>
+        <span class="tenant-text">
+          <span class="tenant-name">gramo</span>
+          <span class="tenant-sub">Distribuidora de alimentos</span>
+        </span>
       </div>
-      <div class="score-why" id="scoreWhy">Todas las señales están en rango normal.</div>
-      <div class="headline" id="headline">Todo funcionando con normalidad</div>
-      <div class="subline" id="subline">No hay señales de problemas. Si algo empieza a fallar, lo verás aquí antes de que afecte a tus clientes.</div>
-      <div class="badge" id="badge" style="background:var(--ok-bg);color:var(--ok)"><span class="bd" style="background:var(--ok)"></span>Saludable</div>
-    </section>
 
-    <!-- QUÉ PASA / QUÉ HACER -->
-    <div class="cols">
-      <div class="card">
-        <h3>Qué está pasando</h3>
-        <div class="whatline muted" id="whatText">Sin novedades. Todos los equipos responden bien.</div>
-        <div class="proj" id="projRow" hidden>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
-          <span id="projText"></span>
-        </div>
-      </div>
-      <div class="card">
-        <h3>Qué conviene hacer</h3>
-        <div class="action-main action-wait" id="actionText">Nada por ahora. El sistema actúa solo cuando detecta un riesgo real.</div>
-        <button class="act-btn" id="actBtn" disabled>Resolver ahora</button>
-        <div class="act-sub" id="actSub">La acción es reversible y queda registrada. También puede ejecutarse automáticamente.</div>
-      </div>
-    </div>
+      <nav class="nav">
+        <a href="#monitor" data-view="monitor" class="nav-item"><svg><use href="#i-activity"/></svg><span>Monitor en vivo</span></a>
+        <a href="#resultados" data-view="resultados" class="nav-item"><svg><use href="#i-target"/></svg><span>Resultados del kit</span></a>
+        <a href="#negocio" data-view="negocio" class="nav-item"><svg><use href="#i-truck"/></svg><span>Negocio y contexto</span></a>
+        <a href="#simulador" data-view="simulador" class="nav-item"><svg><use href="#i-flask"/></svg><span>Simulador de fallas</span></a>
+      </nav>
 
-    <!-- AVISO AL RESPONSABLE -->
-    <div class="notif">
-      <div class="notif-card">
-        <div class="notif-head">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          Aviso que recibe el responsable
+      <div class="side-foot">
+        <div class="side-row"><span class="dot" id="dotServidor"></span><span id="txtServidor">Conectando…</span></div>
+        <div class="side-row"><span class="dot" id="dotTelegram"></span><span id="txtTelegram">Telegram</span></div>
+        <div class="side-row"><svg><use href="#i-database"/></svg><span id="txtFuente">Kit de datos Zikit</span></div>
+        <div class="side-credit">Equipo ByteMe · Reto Zikit<br>«Antes de que suene el teléfono»</div>
+      </div>
+    </aside>
+
+    <!-- ===================== CONTENIDO ===================== -->
+    <div class="main">
+      <header class="topbar">
+        <div class="top-title">
+          <h1 id="tituloVista">Monitor en vivo</h1>
+          <p id="subtituloVista">gramo · telemetría real del kit Zikit</p>
         </div>
-        <div class="notif-body" id="notifBody">
-          <div class="notif-empty">Cuando haya un riesgo, aquí se muestra el mensaje que llega al celular del encargado.</div>
+        <div class="top-right">
+          <span class="live" id="livePill" data-modo="semana"><span class="live-dot"></span><span id="liveTxt">Semana completa</span></span>
+          <span class="clock" id="reloj" title="Hora en gramo según los datos">—</span>
+          <button class="icon-btn" id="btnTema" aria-label="Cambiar tema claro u oscuro">
+            <svg class="only-light"><use href="#i-moon"/></svg><svg class="only-dark"><use href="#i-sun"/></svg>
+          </button>
         </div>
-        <div class="hist">
-          <div class="hist-head">
-            <span>Historial de avisos enviados al celular</span>
-            <span class="hist-sync" id="histSync">sin conexión al servidor</span>
+      </header>
+
+      <div class="offline" id="offline" hidden>
+        <svg><use href="#i-info"/></svg>
+        <div><strong>Sin conexión con el servidor.</strong> Los datos reales de gramo necesitan el backend: en <code>backend/</code> ejecuta <code>python server.py</code> y recarga. El simulador de fallas funciona igual sin servidor.</div>
+      </div>
+
+      <!-- ===================== VISTA: MONITOR ===================== -->
+      <main class="content view" id="vista-monitor" data-titulo="Monitor en vivo">
+
+        <section class="kpis" aria-label="Resultados del detector sobre el kit completo">
+          <div class="kpi">
+            <div class="kpi-label">Fallas reales anticipadas</div>
+            <div class="kpi-value" id="kpiAnticipadas">—</div>
+            <div class="kpi-sub" id="kpiAnticipadasSub">Calculando sobre el kit…</div>
           </div>
-          <div id="histList"><div class="notif-empty">Aún no se ha enviado ningún aviso.</div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TENDENCIA -->
-    <div class="trend card">
-      <div class="thead">
-        <span class="tt">Nivel de riesgo en el tiempo</span>
-        <span class="tc" id="clock">en reposo</span>
-      </div>
-      <svg class="spark" id="spark" viewBox="0 0 400 120" preserveAspectRatio="none" role="img" aria-label="Tendencia del nivel de riesgo"></svg>
-      <div class="legend">
-        <span><span class="sw" style="background:var(--accent)"></span>Nivel de riesgo</span>
-        <span><span class="sw dash"></span>Punto de aviso</span>
-      </div>
-    </div>
-
-    <!-- RESULTADO -->
-    <div class="outcome">
-      <div class="oc"><div class="n" id="ocDetect">—</div><div class="l">Cuándo lo detectamos</div></div>
-      <div class="oc"><div class="n" id="ocFail">—</div><div class="l">Cuándo habría fallado</div></div>
-      <div class="oc win"><div class="n" id="ocWin">—</div><div class="l">Tiempo que ganaste para actuar</div></div>
-    </div>
-
-    <!-- CONTROL / DEMO -->
-    <details class="control">
-      <summary>
-        <span>⚙ Modo demostración · simular una falla</span>
-        <span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span>
-      </summary>
-      <div class="cbody">
-        <div class="csub">Panel para la presentación. Elige una falla típica de un negocio y provoca que ocurra; arriba verás cómo el sistema la detecta y avisa antes de que el cliente lo note.</div>
-
-        <div class="field">
-          <label>Origen de los datos</label>
-          <div class="seg" id="srcSeg">
-            <button class="on" data-src="sim">Simulado</button>
-            <button data-src="hw">Equipo real (ESP32)</button>
+          <div class="kpi">
+            <div class="kpi-label">Falsas alarmas</div>
+            <div class="kpi-value" id="kpiFalsas">—</div>
+            <div class="kpi-sub" id="kpiFalsasSub">&nbsp;</div>
           </div>
-          <div class="hw-row" id="hwRow" hidden>
-            <input type="text" id="espIp" placeholder="IP del ESP32 (ej. 192.168.1.100)" autocomplete="off" spellcheck="false">
-            <span class="hw-state" id="hwState">—</span>
+          <div class="kpi">
+            <div class="kpi-label">Anticipación promedio</div>
+            <div class="kpi-value" id="kpiAnticipacion">—</div>
+            <div class="kpi-sub" id="kpiAnticipacionSub">&nbsp;</div>
           </div>
-        </div>
+          <div class="kpi">
+            <div class="kpi-label">Sistema correcto en el aviso</div>
+            <div class="kpi-value" id="kpiDiagnostico">—</div>
+            <div class="kpi-sub" id="kpiDiagnosticoSub">&nbsp;</div>
+          </div>
+        </section>
 
-        <div class="field">
-          <label for="failType">¿Qué falla quieres simular?</label>
-          <select id="failType">
-            <option value="memory">La caja registradora se queda sin memoria</option>
-            <option value="disk">El servidor se queda sin espacio</option>
-            <option value="latency">El sistema se pone lento</option>
-            <option value="errors">Empiezan a fallar las operaciones</option>
-          </select>
-        </div>
+        <!-- Controles de la repeticion: filtran todo lo de abajo -->
+        <section class="controls" aria-label="Reproducción de la semana">
+          <label class="field-inline">
+            <span>Semana</span>
+            <select id="selCorrida" aria-label="Semana del kit"></select>
+          </label>
+          <button class="btn btn-primary" id="btnPlay"><svg><use href="#i-play"/></svg><span>Reproducir</span></button>
+          <div class="seg" id="segVelocidad" role="group" aria-label="Velocidad">
+            <button data-v="lenta" aria-pressed="false">10 min/s</button>
+            <button data-v="media" aria-pressed="true">1 h/s</button>
+            <button data-v="rapida" aria-pressed="false">4 h/s</button>
+          </div>
+          <button class="btn" id="btnInicio" title="Reproducir desde el inicio de la semana"><svg><use href="#i-rewind"/></svg><span>Desde el inicio</span></button>
+          <button class="btn" id="btnCompleta" title="Ver la semana completa"><svg><use href="#i-skip"/></svg><span>Semana completa</span></button>
+          <div class="progress">
+            <div class="progress-txt"><span id="progTxt">—</span></div>
+            <div class="progress-bar"><i id="progBar"></i></div>
+          </div>
+        </section>
 
-        <div class="field rangewrap">
-          <div class="rh"><label for="speed">Qué tan rápido se deteriora</label><span class="rv" id="speedVal">Media</span></div>
-          <input type="range" id="speed" min="1" max="3" step="1" value="2">
-        </div>
+        <!-- Estado ahora -->
+        <section class="row-a">
+          <article class="card status-card" id="cardEstado">
+            <div class="status-top">
+              <div class="gauge" id="gauge" role="img" aria-label="Índice de riesgo"></div>
+              <div class="status-text">
+                <span class="status" id="badgeEstado" data-estado="verde"><svg><use href="#i-ok"/></svg><span>Saludable</span></span>
+                <h2 class="headline" id="headline">Todo funcionando con normalidad</h2>
+                <p class="subline" id="subline">Los pedidos, el inventario y el portal responden bien.</p>
+                <div class="note" id="notaVentana" hidden><svg><use href="#i-calendar"/></svg><span></span></div>
+              </div>
+            </div>
+            <div class="systems" id="sistemas" aria-label="Sistemas críticos de gramo"></div>
+          </article>
 
-        <div class="field rangewrap">
-          <div class="rh"><label for="thr">Sensibilidad del aviso</label><span class="rv" id="thrVal">Normal</span></div>
-          <input type="range" id="thr" min="1" max="3" step="1" value="2">
-        </div>
+          <article class="card evidence-card">
+            <div class="card-h">
+              <div><div class="card-t">Por qué el riesgo está así</div><div class="card-s">Minutos «malos» en la ventana de 15 min del detector</div></div>
+            </div>
+            <div class="card-b">
+              <div class="rules" id="reglas"></div>
+              <div class="todo" id="queHacer" data-estado="verde">
+                <div class="todo-t"><svg><use href="#i-check"/></svg><span id="todoTitulo">Nada que hacer por ahora</span></div>
+                <p id="todoTexto">El detector solo avisa cuando una señal se sostiene. Un pico suelto es ruido normal del negocio.</p>
+                <div class="pista" id="todoPista" hidden><svg><use href="#i-search"/></svg><span></span></div>
+              </div>
+            </div>
+          </article>
 
-        <div class="runrow">
-          <button class="run" id="runBtn">Simular la falla</button>
-          <button class="ghost" id="resetBtn">Reiniciar</button>
-        </div>
-        <div class="backend-note" id="backendNote"></div>
-      </div>
-    </details>
+          <article class="card phone-card">
+            <div class="card-h">
+              <div><div class="card-t">Aviso al responsable</div><div class="card-s">Así llega al celular por Telegram</div></div>
+              <svg class="card-ico"><use href="#i-send"/></svg>
+            </div>
+            <div class="card-b">
+              <div class="phone" id="telefono">
+                <div class="phone-head">
+                  <span class="bot-avatar"><svg><use href="#i-logo"/></svg></span>
+                  <span><span class="bot-name">SecureGuard</span><span class="bot-sub">bot · aviso preventivo</span></span>
+                </div>
+                <div class="phone-body" id="telefonoCuerpo">
+                  <div class="phone-empty">Sin avisos todavía. Cuando una falla real empiece a formarse, aquí aparece el mensaje que recibe el encargado, antes de que los clientes lo noten.</div>
+                </div>
+              </div>
+              <div class="tg-state" id="tgEstado">&nbsp;</div>
+            </div>
+          </article>
+        </section>
 
-    <!-- DATOS REALES (dataset Zikit) -->
-    <details class="control" id="datasetPanel">
-      <summary>
-        <span>📊 Datos reales · reproducir una semana del dataset</span>
-        <span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span>
-      </summary>
-      <div class="cbody">
-        <div class="csub">Reproduce la telemetría real de una PyME (cliente <strong>gramo</strong>, distribuidora de alimentos) del kit de datos del reto. El detector corre en vivo sobre los datos y avisa de las fallas reales <strong>antes</strong> de que lleguen al pico, sin falsas alarmas por los picos normales del negocio.</div>
+        <!-- Linea de tiempo de la semana -->
+        <section class="card timeline-card">
+          <div class="card-h wrap">
+            <div>
+              <div class="card-t">La semana de gramo, minuto a minuto</div>
+              <div class="card-s">Índice de riesgo del detector sobre la telemetría real · haz clic para ir a ese momento</div>
+            </div>
+            <div class="week-chips" id="resumenSemana"></div>
+          </div>
+          <div class="legend" id="leyendaTimeline">
+            <span><i class="lk lk-line"></i>Índice de riesgo</span>
+            <span><i class="lk lk-dash"></i>Umbral de aviso (65)</span>
+            <span><i class="lk lk-alert"></i>Aviso enviado</span>
+            <span><i class="lk lk-peak"></i>Pico real de la falla</span>
+            <span><i class="lk lk-band"></i>Pico anunciado (no se avisa)</span>
+            <span><i class="lk lk-hours"></i>Horario de atención</span>
+          </div>
+          <div class="timeline" id="timeline"></div>
+        </section>
 
-        <div class="field">
-          <label for="corridaSel">¿Qué semana (corrida) reproducir?</label>
-          <select id="corridaSel"><option>cargando…</option></select>
-        </div>
+        <!-- Telemetria -->
+        <section class="telemetry">
+          <div class="section-h">
+            <div>
+              <h3>Telemetría de app-01</h3>
+              <p id="telemetriaSub">Últimas 6 horas hasta el cursor</p>
+            </div>
+            <div class="section-actions">
+              <div class="seg" id="segVentana" role="group" aria-label="Ventana de tiempo">
+                <button data-h="6" aria-pressed="true">6 h</button>
+                <button data-h="24" aria-pressed="false">24 h</button>
+              </div>
+              <button class="btn btn-ghost" id="btnTabla" aria-pressed="false"><svg><use href="#i-table"/></svg><span>Ver tabla</span></button>
+            </div>
+          </div>
+          <div class="charts" id="graficas"></div>
+          <div class="card table-card" id="tablaTelemetria" hidden></div>
+        </section>
 
-        <div class="runrow">
-          <button class="run" id="replayBtn">Reproducir datos reales</button>
-          <button class="ghost" id="replayStop">Detener</button>
-        </div>
-        <div class="backend-note" id="replayNote">Requiere el servidor corriendo (python server.py).</div>
+        <!-- Avisos y registros -->
+        <section class="row-d">
+          <article class="card">
+            <div class="card-h">
+              <div><div class="card-t">Avisos de la semana</div><div class="card-s" id="avisosSub">Verificados contra la solución del kit</div></div>
+              <svg class="card-ico"><use href="#i-bell"/></svg>
+            </div>
+            <div class="card-b alerts" id="avisos"></div>
+          </article>
+          <article class="card">
+            <div class="card-h">
+              <div><div class="card-t">Lo que dicen los registros</div><div class="card-s" id="registrosSub">logs.md de servidor, firewall y app</div></div>
+              <div class="seg seg-sm" id="segLogs" role="group" aria-label="Filtro de registros">
+                <button data-f="alertas" aria-pressed="true">Advertencias</button>
+                <button data-f="todo" aria-pressed="false">Todo</button>
+              </div>
+            </div>
+            <div class="card-b logs" id="registros"></div>
+          </article>
+        </section>
+      </main>
 
-        <div id="replayResult" hidden>
-          <div class="rb-title" style="margin-top:16px">Fallas reales detectadas</div>
-          <div id="replayDets"></div>
-        </div>
-      </div>
-    </details>
+      <!-- ===================== VISTA: RESULTADOS ===================== -->
+      <main class="content view" id="vista-resultados" data-titulo="Resultados del kit" hidden>
+        <p class="lead" id="resLead">Corrimos el mismo monitor sobre todas las semanas de gramo del kit. En las que traen solución comparamos cada aviso con el pico real de la falla; en las de prueba solo vemos qué avisos da.</p>
 
-    <div class="footnote">Comparación: sin vigilancia, la falla se descubre cuando el cliente llama molesto. Con SecureGuard, el aviso llega al cruzar el punto de riesgo. La diferencia es el tiempo que ganas para resolver sin que nadie lo note.</div>
+        <section class="kpis kpis-5" aria-label="Resumen">
+          <div class="kpi"><div class="kpi-label">Fallas reales anticipadas</div><div class="kpi-value" id="rAnticipadas">—</div><div class="kpi-sub" id="rAnticipadasSub">&nbsp;</div></div>
+          <div class="kpi"><div class="kpi-label">Falsas alarmas</div><div class="kpi-value" id="rFalsas">—</div><div class="kpi-sub" id="rFalsasSub">&nbsp;</div></div>
+          <div class="kpi"><div class="kpi-label">Anticipación promedio</div><div class="kpi-value" id="rAnticipacion">—</div><div class="kpi-sub" id="rAnticipacionSub">&nbsp;</div></div>
+          <div class="kpi"><div class="kpi-label">Sistema correcto</div><div class="kpi-value" id="rDiagnostico">—</div><div class="kpi-sub" id="rDiagnosticoSub">&nbsp;</div></div>
+          <div class="kpi"><div class="kpi-label">Semanas analizadas</div><div class="kpi-value" id="rSemanas">—</div><div class="kpi-sub" id="rSemanasSub">&nbsp;</div></div>
+        </section>
+
+        <section class="grid-2">
+          <article class="card">
+            <div class="card-h">
+              <div><div class="card-t">Anticipación por tipo de falla</div><div class="card-s">Minutos entre el aviso y el pico real, una marca por semana con solución</div></div>
+            </div>
+            <div class="card-b"><div id="stripPlot" class="strip"></div></div>
+          </article>
+          <article class="card">
+            <div class="card-h">
+              <div><div class="card-t">Picos normales que no generaron alarma</div><div class="card-s">Eventos de la solución marcados como no reales</div></div>
+            </div>
+            <div class="card-b"><div id="senuelos" class="decoys"></div>
+              <p class="fine">El detector exige señales sostenidas y respeta las ventanas anunciadas en <code>contexto.md</code> (promoción 2x1, snapshot de los sábados y tareas nocturnas).</p>
+            </div>
+          </article>
+        </section>
+
+        <section class="card">
+          <div class="card-h wrap">
+            <div><div class="card-t">Semanas de prueba, sin solución publicada</div><div class="card-s" id="pruebaSub">Qué avisos dio el detector y qué tan consistente es su patrón</div></div>
+          </div>
+          <div class="card-b"><div id="patrones"></div></div>
+        </section>
+
+        <section class="card">
+          <div class="card-h wrap">
+            <div><div class="card-t">Detalle por semana</div><div class="card-s">Haz clic en una semana para abrirla en el monitor</div></div>
+            <label class="check"><input type="checkbox" id="chkPrueba"> Incluir semanas de prueba</label>
+          </div>
+          <div class="table-wrap" id="tablaSemanas"></div>
+        </section>
+
+        <p class="fine method">Cómo se mide: un aviso acierta si su racha empieza dentro de ±120 min del pico etiquetado (la misma regla de <code>backend/detector/evaluacion.py</code>). La anticipación se cuenta desde el minuto en que sale el aviso hasta el pico de la falla. La solución del kit solo se usa para verificar; el detector nunca la ve.</p>
+      </main>
+
+      <!-- ===================== VISTA: NEGOCIO ===================== -->
+      <main class="content view" id="vista-negocio" data-titulo="Negocio y contexto" hidden>
+        <section class="card biz-hero">
+          <div class="biz-id">
+            <span class="biz-avatar" aria-hidden="true">g</span>
+            <div>
+              <h2>gramo</h2>
+              <p id="bizGiro">Distribuidora de alimentos</p>
+            </div>
+          </div>
+          <div class="biz-facts" id="bizDatos"></div>
+        </section>
+
+        <section>
+          <div class="section-h"><div><h3>Sistemas críticos</h3><p>Tal como los describe <code>contexto.md</code>, y la falla que SecureGuard anticipa en cada uno</p></div></div>
+          <div class="sys-grid" id="bizSistemas"></div>
+        </section>
+
+        <section class="grid-2 grid-2-wide">
+          <article class="card">
+            <div class="card-h"><div><div class="card-t">Semana tipo de gramo</div><div class="card-s">Cuándo opera el negocio y qué cargas son normales</div></div></div>
+            <div class="card-b"><div id="agenda" class="agenda"></div></div>
+          </article>
+          <article class="card">
+            <div class="card-h"><div><div class="card-t">Eventos de negocio anunciados</div><div class="card-s">Picos esperados: el detector no avisa dentro de estas ventanas (±20 min)</div></div></div>
+            <div class="card-b"><div id="bizEventos" class="events"></div></div>
+          </article>
+        </section>
+
+        <section class="card">
+          <div class="card-h"><div><div class="card-t">Cómo decide SecureGuard</div><div class="card-s">Reglas calibradas con las semanas de gramo que traen solución</div></div></div>
+          <div class="card-b"><div id="bizReglas" class="how"></div></div>
+        </section>
+      </main>
+
+      <!-- ===================== VISTA: SIMULADOR ===================== -->
+      <main class="content view" id="vista-simulador" data-titulo="Simulador de fallas" hidden>
+        <p class="lead">Laboratorio para la presentación: provoca una falla sintética en un sistema de gramo y mira cómo el índice de riesgo la detecta antes del punto de falla. Funciona con o sin servidor.</p>
+
+        <section class="sim">
+          <article class="card sim-controls">
+            <div class="card-h"><div><div class="card-t">Provocar una falla</div><div class="card-s" id="simNota">Detectando servidor…</div></div></div>
+            <div class="card-b form">
+              <label class="field"><span>Falla a simular</span>
+                <select id="simEscenario">
+                  <option value="memory">Fuga de memoria en pedidos-worker (app-01)</option>
+                  <option value="latency">Inventario saturado (respuesta lenta)</option>
+                  <option value="errors">Errores en cascada en la API</option>
+                  <option value="disk">Disco de app-01 casi lleno</option>
+                </select>
+              </label>
+              <div class="field"><span>Qué tan rápido se deteriora</span>
+                <div class="seg seg-full" id="simVelocidad" role="group" aria-label="Velocidad de la falla">
+                  <button data-v="lenta" aria-pressed="false">Lenta</button>
+                  <button data-v="media" aria-pressed="true">Media</button>
+                  <button data-v="rapida" aria-pressed="false">Rápida</button>
+                </div>
+              </div>
+              <div class="field"><span>Sensibilidad del aviso</span>
+                <div class="seg seg-full" id="simSensibilidad" role="group" aria-label="Sensibilidad">
+                  <button data-v="baja" aria-pressed="false">Baja · 78</button>
+                  <button data-v="normal" aria-pressed="true">Normal · 65</button>
+                  <button data-v="alta" aria-pressed="false">Alta · 52</button>
+                </div>
+              </div>
+              <div class="field"><span>Origen de la señal</span>
+                <div class="seg seg-full" id="simOrigen" role="group" aria-label="Origen">
+                  <button data-v="sim" aria-pressed="true">Simulada</button>
+                  <button data-v="hw" aria-pressed="false">Equipo real (ESP32)</button>
+                </div>
+                <div class="hw" id="simHw" hidden>
+                  <input type="text" id="simIp" placeholder="IP del ESP32, ej. 192.168.1.100" autocomplete="off" spellcheck="false">
+                  <span class="hw-state" id="simHwEstado">—</span>
+                </div>
+              </div>
+              <div class="actions">
+                <button class="btn btn-primary" id="simRun"><svg><use href="#i-zap"/></svg><span>Simular la falla</span></button>
+                <button class="btn" id="simReset"><svg><use href="#i-rewind"/></svg><span>Reiniciar</span></button>
+              </div>
+            </div>
+          </article>
+
+          <article class="card sim-stage">
+            <div class="sim-top">
+              <div class="gauge" id="simGauge" role="img" aria-label="Índice de riesgo simulado"></div>
+              <div class="status-text">
+                <span class="status" id="simBadge" data-estado="verde"><svg><use href="#i-ok"/></svg><span>Saludable</span></span>
+                <h2 class="headline" id="simHeadline">Listo para simular</h2>
+                <p class="subline" id="simSubline">Elige una falla y presiona «Simular la falla».</p>
+              </div>
+            </div>
+            <div class="sim-chart">
+              <div class="chart-h"><span>Índice de riesgo en el tiempo</span><span class="mono" id="simReloj">0 s</span></div>
+              <div id="simGrafica" class="chart"></div>
+            </div>
+            <div class="sim-cols">
+              <div class="sim-box">
+                <div class="box-t">Qué está pasando</div>
+                <p id="simQue" class="muted">Sin novedades.</p>
+              </div>
+              <div class="sim-box">
+                <div class="box-t">Qué conviene hacer</div>
+                <p id="simAccion" class="muted">Nada por ahora.</p>
+                <button class="btn btn-primary btn-block" id="simResolver" disabled><svg><use href="#i-check"/></svg><span>Resolver ahora</span></button>
+              </div>
+            </div>
+            <div class="outcome">
+              <div><div class="o-label">Cuándo lo detectamos</div><div class="o-value" id="simDetect">—</div></div>
+              <div><div class="o-label">Cuándo habría fallado</div><div class="o-value" id="simFail">—</div></div>
+              <div class="o-win"><div class="o-label">Tiempo ganado para actuar</div><div class="o-value" id="simWin">—</div></div>
+            </div>
+          </article>
+        </section>
+
+        <section class="grid-2">
+          <article class="card">
+            <div class="card-h"><div><div class="card-t">Equipo real (ESP32)</div><div class="card-s">Telemetría del endpoint /health del firmware</div></div><svg class="card-ico"><use href="#i-wifi"/></svg></div>
+            <div class="card-b"><div id="espDatos" class="esp"><p class="muted">Elige «Equipo real (ESP32)» y escribe su IP para leer su salud en vivo.</p></div></div>
+          </article>
+          <article class="card">
+            <div class="card-h">
+              <div><div class="card-t">Historial de avisos enviados</div><div class="card-s" id="histSync">Sin conexión al servidor</div></div>
+              <button class="btn btn-sm" id="btnProbarAviso"><svg><use href="#i-send"/></svg><span>Probar aviso</span></button>
+            </div>
+            <div class="card-b"><div id="historial" class="history"></div></div>
+          </article>
+        </section>
+      </main>
+    </div>
   </div>
 
+  <div class="tip" id="tip" role="tooltip" hidden></div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="charts.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
