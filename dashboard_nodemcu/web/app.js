@@ -8,9 +8,21 @@
 
 (function () {
   "use strict";
-  const $ = (id) => document.getElementById(id);
-  const API = location.protocol.startsWith("http") ? "" : "http://localhost:9091";
-  if (location.protocol.startsWith("http")) $("lnkPrincipal").href = `${location.protocol}//${location.hostname}:9090/`;
+  // Este mismo archivo corre en dos lugares:
+  //  - su pagina propia (/nodemcu/), con los IDs tal cual;
+  //  - la vista "Tablero NodeMCU" del tablero principal, que lo carga con
+  //    <script src="nodemcu/app.js" data-prefijo="nm-" data-api="/nodemcu">.
+  const script = document.currentScript;
+  const P = (script && script.dataset.prefijo) || "";
+  const enHttp = location.protocol.startsWith("http");
+  const API = script && script.dataset.api ? script.dataset.api   // p. ej. http://<host>:9091
+    : enHttp ? new URL(".", location.href).pathname.replace(/\/$/, "") : "http://localhost:9091";
+  // Elementos que la vista incrustada no tiene (reloj, tema, barra lateral...):
+  // se usa un nodo suelto para que el resto del codigo no tenga que preguntar.
+  const fantasmas = {};
+  const fantasma = (id) => fantasmas[id] || (fantasmas[id] = Object.assign(document.createElement("div"), { innerHTML: "<svg><use/></svg>" }));
+  const COMPARTIDOS = { tip: 1, toast: 1 };   // globo y aviso emergente: los del tablero principal
+  const $ = (id) => document.getElementById(COMPARTIDOS[id] ? id : P + id) || fantasma(id);
 
   /* ---------- Utilidades ---------- */
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
@@ -230,7 +242,8 @@
     $("tempVal").textContent = hay ? dec(t.temperatura, 1) : "—";
     $("tempSub").textContent = t.conectada ? "Sensor LM35 de la NodeMCU · en tiempo real"
       : hay ? "Placa sin conexión: última lectura recibida" : "Esperando la primera lectura de la NodeMCU";
-    document.querySelector(".temp-card").toggleAttribute("data-sin-datos", !t.conectada);
+    const tarjeta = $("tempVal").closest(".temp-card");
+    if (tarjeta) tarjeta.toggleAttribute("data-sin-datos", !t.conectada);
     const badge = $("tempBadge");
     badge.dataset.estado = hay ? s.estado : "verde";
     badge.innerHTML = ico(hay ? s.icono : "i-info") + `<span>${hay ? s.txt : "Sin lectura"}</span>`;
@@ -289,12 +302,19 @@
     $("todoTitulo").textContent = f ? (d.estado === "rojo" ? "Qué hacer ahora" : "Vigilar: " + bonito(f.titulo)) : "Nada que hacer por ahora";
     $("todoTexto").textContent = f ? bonito(f.accion) : "El detector solo avisa cuando una señal se sostiene; un pico suelto es ruido normal.";
 
-    // semaforo de la placa
+    // semaforo de la placa: el mismo LED que esta encendido en fisico. El
+    // firmware deja que la temperatura mande sobre el servidor (CRITICO -> rojo,
+    // PRECAUCION -> ambar), asi que aqui se aplica la misma regla.
     const sem = $("semaforo");
-    sem.dataset.estado = d.estado || "verde";
+    const tm = d.fuente === "nodemcu" && d.termico && d.termico.conectada ? d.termico.estado : null;
+    const luzFisica = tm === "CRITICO" ? "rojo" : tm && tm.startsWith("PRECAUCION") ? "ambar" : d.estado || "verde";
+    const porTemp = luzFisica !== (d.estado || "verde");
+    const eLuz = ESTADOS[luzFisica] || ESTADOS.verde;
+    sem.dataset.estado = luzFisica;
     sem.toggleAttribute("data-apagado", !hayDatos);
-    sem.setAttribute("aria-label", "Semáforo: " + (hayDatos ? e.luz : "apagado"));
-    $("semEstado").textContent = hayDatos ? e.luz : "Apagado · sin datos";
+    const txtLuz = eLuz.luz + (porTemp ? ` (por temperatura: ${dec(d.termico.temperatura, 1)} °C)` : "");
+    sem.setAttribute("aria-label", "Semáforo: " + (hayDatos ? txtLuz : "apagado"));
+    $("semEstado").textContent = hayDatos ? txtLuz : "Apagado · sin datos";
     const filas = [];
     if (d.fuente === "nodemcu") {
       const p = d.placa || {};

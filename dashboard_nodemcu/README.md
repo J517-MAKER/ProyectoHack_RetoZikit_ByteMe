@@ -34,9 +34,9 @@ gramo (la principal y 54 corridas):
 dashboard_nodemcu/
 ├── servidor/
 │   ├── server.py     FastAPI (puerto 9091): repetición del kit, NodeMCU en vivo, avisos
-│   ├── monitor.py    detector en vivo + índice de riesgo (nivel 80 % + tendencia EWMA)
+│   ├── monitor.py    detector en vivo + índice de riesgo + EnVivo (la placa en tiempo real)
 │   └── gramo.py      contexto de gramo, runbooks y lectura de corridas/logs
-├── web/              tablero (lo sirve el servidor en http://localhost:9091)
+├── web/              tablero (http://localhost:9091; también en la vista "Tablero NodeMCU" de http://localhost:9090)
 ├── nodemcu/gramo_semaforo/gramo_semaforo.ino   firmware ESP8266
 └── tests/            pruebas (usan la muestra incluida en el repo)
 ```

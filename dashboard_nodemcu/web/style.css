@@ -32,10 +32,10 @@
 .temp-val small { font-size: 18px; font-weight: 500; color: var(--ink-3); margin-left: 4px; }
 .temp-card[data-sin-datos] .temp-val { color: var(--ink-3); }
 
-#btnSonido[aria-pressed="true"] { color: var(--critical); }
-#btnSonido[data-sonando] { animation: sg-pulso 1s ease-in-out infinite; }
+.btn-sonido[aria-pressed="true"] { color: var(--critical); }
+.btn-sonido[data-sonando] { animation: sg-pulso 1s ease-in-out infinite; }
 @keyframes sg-pulso { 50% { transform: scale(1.12); } }
-@media (prefers-reduced-motion: reduce) { #btnSonido[data-sonando] { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .btn-sonido[data-sonando] { animation: none; } }
 
 .ctx-sys { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .ctx-item { padding: 11px 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); }

@@ -54,6 +54,10 @@
       <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
       <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8M16 17H8M10 9H8"/></symbol>
       <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-vol" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.4 18.4a9 9 0 0 0 0-12.8"/></symbol>
+      <symbol id="i-vol-off" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></symbol>
+      <symbol id="i-temp" viewBox="0 0 24 24"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></symbol>
     </defs>
   </svg>
 
@@ -81,6 +85,7 @@
         <a href="#resultados" data-view="resultados" class="nav-item"><svg><use href="#i-target"/></svg><span>Resultados del kit</span></a>
         <a href="#negocio" data-view="negocio" class="nav-item"><svg><use href="#i-truck"/></svg><span>Negocio y contexto</span></a>
         <a href="#simulador" data-view="simulador" class="nav-item"><svg><use href="#i-flask"/></svg><span>Simulador de fallas</span></a>
+        <a href="#nodemcu" data-view="nodemcu" class="nav-item"><svg><use href="#i-wifi"/></svg><span>Tablero NodeMCU</span></a>
       </nav>
 
       <div class="side-foot">
@@ -443,7 +448,120 @@
           </article>
         </section>
       </main>
+
+      <!-- ===================== VISTA: TABLERO NODEMCU ===================== -->
+      <main class="content view" id="vista-nodemcu" data-titulo="Tablero NodeMCU" hidden>
+
+        <!-- Controles: fuente de la telemetría (reproducción del kit) -->
+        <section class="controls" aria-label="Reproducción de una semana del kit">
+          <label class="field-inline"><span>Semana</span><select id="nm-selCorrida"></select></label>
+          <label class="field-inline"><span>Velocidad</span>
+            <select id="nm-selVelocidad">
+              <option value="lenta">10 min/s</option>
+              <option value="media" selected>1 h/s</option>
+              <option value="rapida">4 h/s</option>
+            </select>
+          </label>
+          <button class="btn btn-primary" id="nm-btnIniciar"><svg><use href="#i-play"/></svg><span>Reproducir</span></button>
+          <button class="btn" id="nm-btnDetener"><svg><use href="#i-stop"/></svg><span>Detener</span></button>
+          <div class="progress">
+            <div class="progress-txt"><span id="nm-progTxt">—</span></div>
+            <div class="progress-bar"><i id="nm-progBar"></i></div>
+          </div>
+        </section>
+
+        <!-- Fila: Estado + Semáforo físico -->
+        <section class="nm-row">
+          <article class="card status-card">
+            <div class="status-top">
+              <div class="gauge" id="nm-gauge" role="img" aria-label="Índice de riesgo"></div>
+              <div class="status-text">
+                <span class="status" id="nm-badge" data-estado="verde"><svg><use href="#i-ok"/></svg><span>Saludable</span></span>
+                <h2 class="headline" id="nm-headline">Todo funcionando con normalidad</h2>
+                <p class="subline" id="nm-subline">Los pedidos, el inventario y el portal responden bien.</p>
+                <div class="note" id="nm-nota" hidden><svg><use href="#i-calendar"/></svg><span></span></div>
+              </div>
+            </div>
+            <div class="todo" id="nm-queHacer" data-estado="verde">
+              <div class="todo-t"><svg><use href="#i-check"/></svg><span id="nm-todoTitulo">Nada que hacer por ahora</span></div>
+              <p id="nm-todoTexto">El detector solo avisa cuando una señal se sostiene.</p>
+            </div>
+          </article>
+
+          <article class="card semaforo-card">
+            <div class="card-h">
+              <div><div class="card-t">El semáforo de la placa</div><div class="card-s" id="nm-semSub">Lo que muestran los LED de la NodeMCU</div></div>
+              <svg class="card-ico"><use href="#i-wifi"/></svg>
+            </div>
+            <div class="card-b semaforo-b">
+              <div class="semaforo" id="nm-semaforo" role="img" aria-label="Semáforo">
+                <span class="luz" data-c="rojo"></span>
+                <span class="luz" data-c="ambar"></span>
+                <span class="luz" data-c="verde"></span>
+              </div>
+              <div class="semaforo-info">
+                <div class="sem-estado" id="nm-semEstado">Verde · todo bien</div>
+                <dl class="placa" id="nm-placa"></dl>
+              </div>
+            </div>
+            <div class="card-b semaforo-acc">
+              <button class="btn btn-sm" id="nm-btnNodeReset"><svg><use href="#i-rewind"/></svg><span>Reiniciar monitor de la placa</span></button>
+              <button class="btn btn-sm" id="nm-btnProbar"><svg><use href="#i-send"/></svg><span>Probar aviso</span></button>
+              <button class="btn btn-sm btn-sonido" id="nm-btnSonido" aria-pressed="false" aria-label="Activar sonido de alerta" title="Activar sonido de alerta"><svg><use href="#i-vol-off"/></svg><span>Sonido de alerta</span></button>
+            </div>
+          </article>
+        </section>
+
+        <!-- Temperatura del equipo (LM35) -->
+        <section class="card temp-card" aria-label="Temperatura en tiempo real">
+          <div class="card-h">
+            <div><div class="card-t">Temperatura del equipo</div><div class="card-s" id="nm-tempSub">Sensor LM35 de la NodeMCU · en tiempo real</div></div>
+            <svg class="card-ico"><use href="#i-temp"/></svg>
+          </div>
+          <div class="card-b temp-b">
+            <div class="temp-info">
+              <div class="temp-val"><span id="nm-tempVal">—</span><small>°C</small></div>
+              <span class="status" id="nm-tempBadge" data-estado="verde"><svg><use href="#i-ok"/></svg><span>Sin lectura</span></span>
+              <dl class="placa" id="nm-tempDatos"></dl>
+            </div>
+            <div class="chart temp-chart" id="nm-tempChart"></div>
+          </div>
+        </section>
+
+        <!-- Señales recientes (gráficas de telemetría) -->
+        <section class="telemetry">
+          <div class="section-h">
+            <div><h3>Señales recientes</h3><p id="nm-senalesSub">Últimas 4 horas de la fuente activa</p></div>
+          </div>
+          <div class="charts charts-4" id="nm-graficas"></div>
+        </section>
+
+        <!-- Avisos y registros -->
+        <section class="row-d">
+          <article class="card">
+            <div class="card-h">
+              <div><div class="card-t">Avisos enviados al responsable</div><div class="card-s" id="nm-tgTxt">&nbsp;</div></div>
+              <svg class="card-ico"><use href="#i-bell"/></svg>
+            </div>
+            <div class="card-b alerts" id="nm-avisos"></div>
+          </article>
+          <article class="card">
+            <div class="card-h">
+              <div><div class="card-t">Lo que dicen los registros</div><div class="card-s">Advertencias y errores de logs.md</div></div>
+            </div>
+            <div class="card-b logs" id="nm-registros"></div>
+          </article>
+        </section>
+
+        <!-- Contexto de gramo -->
+        <section class="card">
+          <div class="card-h"><div><div class="card-t">Lo que sabemos de gramo</div><div class="card-s" id="nm-ctxSub">contexto.md del kit</div></div></div>
+          <div class="card-b" id="nm-contexto"></div>
+        </section>
+
+      </main>
     </div>
+
   </div>
 
   <div class="tip" id="tip" role="tooltip" hidden></div>
@@ -451,5 +569,18 @@
 
   <script src="charts.js"></script>
   <script src="app.js"></script>
+  <!-- Tablero NodeMCU: el mismo app.js de dashboard_nodemcu/web, servido por el
+       servidor NodeMCU (puerto 9091). Usa los IDs con prefijo nm- y lee su API. -->
+  <script>
+    (function () {
+      var base = (location.protocol.indexOf("http") === 0 ? location.protocol + "//" + location.hostname : "http://localhost") + ":9091";
+      var s = document.createElement("script");
+      s.src = base + "/app.js";
+      s.dataset.prefijo = "nm-";
+      s.dataset.api = base;
+      document.body.appendChild(s);
+    })();
+  </script>
 </body>
 </html>
+
