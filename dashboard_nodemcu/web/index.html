@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
-  <!-- Mismo sistema de diseno que el tablero principal (dashboard/) -->
-  <link rel="stylesheet" href="../../dashboard/style.css">
+  <!-- Mismo sistema de diseno que el tablero principal (dashboard/, servido en /nodemcu/dashboard/) -->
+  <link rel="stylesheet" href="dashboard/style.css">
   <link rel="stylesheet" href="style.css">
   <script>
     try { var t = localStorage.getItem("sg-tema"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
@@ -58,7 +58,7 @@
       </div>
       <nav class="nav">
         <a href="#" class="nav-item" aria-current="page"><svg><use href="#i-cpu"/></svg><span>Tablero NodeMCU</span></a>
-        <a href="http://localhost:9090/" class="nav-item" id="lnkPrincipal"><svg><use href="#i-activity"/></svg><span>Monitor principal</span></a>
+        <a href="/" class="nav-item" id="lnkPrincipal"><svg><use href="#i-activity"/></svg><span>Monitor principal</span></a>
       </nav>
       <div class="side-foot">
         <div class="side-row"><span class="dot" id="dotServidor"></span><span id="txtServidor">Conectando…</span></div>
@@ -77,7 +77,7 @@
         <div class="top-right">
           <span class="live" id="livePill" data-modo="pausa"><span class="live-dot"></span><span id="liveTxt">Sin datos</span></span>
           <span class="clock" id="reloj">—</span>
-          <button class="icon-btn" id="btnSonido" aria-pressed="false" aria-label="Activar sonido de alerta" title="Activar sonido de alerta">
+          <button class="icon-btn btn-sonido" id="btnSonido" aria-pressed="false" aria-label="Activar sonido de alerta" title="Activar sonido de alerta">
             <svg><use href="#i-vol-off"/></svg>
           </button>
           <button class="icon-btn" id="btnTema" aria-label="Cambiar tema claro u oscuro">
@@ -199,7 +199,7 @@
   <div class="tip" id="tip" role="tooltip" hidden></div>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="../../dashboard/charts.js"></script>
+  <script src="dashboard/charts.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

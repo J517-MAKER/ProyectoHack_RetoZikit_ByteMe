@@ -221,3 +221,55 @@ class MonitorGramo:
             "registros": list(self.registros),
             "serie": list(self.serie),
         }
+
+
+# =============================================================
+#  NODEMCU EN VIVO
+# =============================================================
+
+class EnVivo:
+    """
+    Telemetria real de la NodeMCU. Cada envio cuenta como un "minuto"
+    del detector, para que la demo dure segundos y no horas. Ademas
+    guarda el historial del sensor termico (LM35) de la placa.
+    """
+
+    SEGUNDOS_CONECTADA = 15   # sin envios en este tiempo, la placa se da por desconectada
+
+    def __init__(self):
+        # historial del sensor termico; no se borra al reiniciar el monitor
+        self.termico: deque = deque(maxlen=150)
+        self.reiniciar()
+
+    def reiniciar(self, respetar_contexto: bool = False):
+        # Por defecto sin filtro de contexto: la demo puede caer de madrugada.
+        self.monitor = MonitorGramo(gramo.contexto_por_defecto(),
+                                    respetar_contexto=respetar_contexto)
+        self.ultimo_envio: datetime | None = None
+        self.placa: dict = {}
+
+    def recibir(self, t) -> "Aviso | None":
+        """Procesa un envio de la placa (objeto con los campos de la telemetria)."""
+        self.ultimo_envio = datetime.now()
+        self.placa = {"id": t.placa, "ip": t.ip, "heap_libre": t.heap_libre}
+        fila = {"ts": self.ultimo_envio.replace(microsecond=0), "cpu": t.cpu, "ram": t.ram,
+                "disco": t.disco, "latencia": t.latencia_ms, "errores": t.errores}
+        if t.temperatura is not None:
+            self.termico.append({"ts": fila["ts"].isoformat(), "temperatura": round(t.temperatura, 1),
+                                 "estado": t.estado_termico or "OK", "rele": bool(t.rele)})
+        return self.monitor.procesar(fila)
+
+    def conectada(self) -> bool:
+        return bool(self.ultimo_envio and
+                    (datetime.now() - self.ultimo_envio).total_seconds() < self.SEGUNDOS_CONECTADA)
+
+    def to_dict(self) -> dict:
+        return {"fuente": "nodemcu", "conectada": self.conectada(), "placa": self.placa,
+                **self.monitor.to_dict()}
+
+    def termico_dict(self) -> dict:
+        """Temperatura en vivo de la placa: ultima lectura e historial."""
+        ultima = self.termico[-1] if self.termico else {}
+        return {"conectada": self.conectada(), "temperatura": ultima.get("temperatura"),
+                "estado": ultima.get("estado"), "rele": ultima.get("rele"), "ts": ultima.get("ts"),
+                "serie": list(self.termico)}

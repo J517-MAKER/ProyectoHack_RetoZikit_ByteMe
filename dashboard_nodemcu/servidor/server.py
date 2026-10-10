@@ -17,6 +17,9 @@
  El aviso al responsable sale por Telegram con la misma
  configuracion del backend principal (backend/.env).
 
+ La vista "Tablero NodeMCU" del tablero principal (puerto 9090)
+ lee este mismo servidor.
+
  Ejecutar:
    pip install -r ../requirements.txt
    python server.py          ->  http://localhost:9091
@@ -25,18 +28,16 @@
 
 import asyncio
 import sys
-from collections import deque
 from contextlib import asynccontextmanager
-from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import APIRouter, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import gramo
-from monitor import MonitorGramo
+from monitor import EnVivo, MonitorGramo
 
 sys.path.insert(0, str(gramo.RAIZ_REPO / "backend"))
 import notificaciones  # noqa: E402  (backend/notificaciones.py, lee backend/.env)
@@ -60,7 +61,7 @@ async def avisar(aviso, origen: str):
               f"Detectado: {aviso.disparo:%a %d %H:%M} ({aviso.detalle})\n"
               f"Qué hacer: {f['accion']}")
     try:
-        aviso.telegram = await notificaciones.enviar_telegram(f["titulo"], cuerpo)
+        aviso.telegram = await notificaciones.enviar_telegram(f["titulo"], cuerpo, origen=origen)
     except Exception as e:  # pragma: no cover
         aviso.telegram = {"enviado": False, "motivo": str(e)}
 
@@ -141,50 +142,7 @@ class Repeticion:
 #  NODEMCU EN VIVO
 # =============================================================
 
-class EnVivo:
-    """
-    Telemetria real de la NodeMCU. Cada envio cuenta como un "minuto"
-    del detector, para que la demo dure segundos y no horas.
-    """
-
-    def __init__(self):
-        # historial del sensor termico (LM35); no se borra al reiniciar el monitor
-        self.termico: deque = deque(maxlen=150)
-        self.reiniciar()
-
-    def reiniciar(self, respetar_contexto: bool = False):
-        # Por defecto sin filtro de contexto: la demo puede caer de madrugada.
-        self.monitor = MonitorGramo(gramo.contexto_por_defecto(),
-                                    respetar_contexto=respetar_contexto)
-        self.ultimo_envio: datetime | None = None
-        self.placa: dict = {}
-
-    async def recibir(self, t: "Telemetria"):
-        self.ultimo_envio = datetime.now()
-        self.placa = {"id": t.placa, "ip": t.ip, "heap_libre": t.heap_libre}
-        fila = {"ts": self.ultimo_envio.replace(microsecond=0), "cpu": t.cpu, "ram": t.ram,
-                "disco": t.disco, "latencia": t.latencia_ms, "errores": t.errores}
-        if t.temperatura is not None:
-            self.termico.append({"ts": fila["ts"].isoformat(), "temperatura": round(t.temperatura, 1),
-                                 "estado": t.estado_termico or "OK", "rele": bool(t.rele)})
-        aviso = self.monitor.procesar(fila)
-        if aviso:
-            await avisar(aviso, f"NodeMCU {t.placa}")
-        return aviso
-
-    def conectada(self) -> bool:
-        return bool(self.ultimo_envio and (datetime.now() - self.ultimo_envio).total_seconds() < 15)
-
-    def to_dict(self) -> dict:
-        return {"fuente": "nodemcu", "conectada": self.conectada(), "placa": self.placa,
-                **self.monitor.to_dict()}
-
-    def termico_dict(self) -> dict:
-        """Temperatura en vivo de la placa: ultima lectura e historial."""
-        ultima = self.termico[-1] if self.termico else {}
-        return {"conectada": self.conectada(), "temperatura": ultima.get("temperatura"),
-                "estado": ultima.get("estado"), "rele": ultima.get("rele"), "ts": ultima.get("ts"),
-                "serie": list(self.termico)}
+# La logica de la placa en vivo (EnVivo) vive en monitor.py.
 
 
 repeticion = Repeticion()
@@ -268,19 +226,28 @@ async def estado(fuente: str = Query(default="")):
     return data
 
 
-@app.post("/api/nodemcu/telemetria")
+# =============================================================
+#  RUTAS DE LA PLACA  (/api/nodemcu/...)
+# =============================================================
+
+router_placa = APIRouter(prefix="/api/nodemcu", tags=["nodemcu"])
+
+
+@router_placa.post("/telemetria")
 async def nodemcu_telemetria(t: Telemetria):
     """
     La NodeMCU manda su telemetria; la respuesta trae el semaforo a mostrar.
     Respuesta compacta para que ArduinoJson la lea con poca memoria.
     """
-    aviso = await en_vivo.recibir(t)
+    aviso = en_vivo.recibir(t)
+    if aviso:
+        await avisar(aviso, f"NodeMCU {t.placa}")
     m = en_vivo.monitor
     return {"estado": m.estado(), "riesgo": round(m.riesgo), "aviso": bool(aviso),
             "minutos": m.minutos}
 
 
-@app.get("/api/nodemcu/semaforo")
+@router_placa.get("/semaforo")
 async def nodemcu_semaforo():
     """Semaforo de la fuente activa (para que la placa solo lo muestre)."""
     data = en_vivo.monitor if fuente_activa() == "nodemcu" else repeticion.monitor
@@ -290,16 +257,19 @@ async def nodemcu_semaforo():
             "avisos": len(data.avisos)}
 
 
-@app.get("/api/nodemcu/temperatura")
+@router_placa.get("/temperatura")
 async def nodemcu_temperatura():
     """Temperatura del sensor LM35 de la placa (ultima lectura e historial)."""
     return en_vivo.termico_dict()
 
 
-@app.post("/api/nodemcu/reiniciar")
+@router_placa.post("/reiniciar")
 async def nodemcu_reiniciar(respetar_contexto: bool = False):
     en_vivo.reiniciar(respetar_contexto)
     return en_vivo.to_dict()
+
+
+app.include_router(router_placa)
 
 
 @app.get("/api/aviso/estado")
@@ -318,8 +288,7 @@ async def aviso_probar():
 
 
 # Estilos y graficas compartidos con el tablero principal (dashboard/): la
-# pagina los pide como ../../dashboard/..., que tambien funciona abriendo el
-# archivo directo desde la carpeta del repo.
+# pagina los pide como dashboard/...
 dashboard_dir = gramo.RAIZ_REPO / "dashboard"
 if dashboard_dir.exists():
     app.mount("/dashboard", StaticFiles(directory=str(dashboard_dir)), name="dashboard")
@@ -327,6 +296,7 @@ if dashboard_dir.exists():
 web_dir = Path(__file__).resolve().parent.parent / "web"
 if web_dir.exists():
     app.mount("/", StaticFiles(directory=str(web_dir), html=True), name="web")
+
 
 
 if __name__ == "__main__":

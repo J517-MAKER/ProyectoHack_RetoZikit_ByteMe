@@ -138,6 +138,7 @@
     resultados: () => "El detector sobre todas las semanas de gramo del kit Zikit",
     negocio: () => "Lo que el kit cuenta de gramo y cómo lo usa el detector",
     simulador: () => "Fallas sintéticas en los sistemas de gramo para la demo en vivo",
+    nodemcu: () => "La placa NodeMCU en vivo: semáforo, temperatura y avisos",
   };
 
   function mostrarVista(v) {
